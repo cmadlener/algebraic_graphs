@@ -53,6 +53,9 @@ assumes overlay_comm: "x \<oplus> y = y \<oplus> x"
 
 begin
 
+lemma connect_assoc: "x \<rightarrow> (y \<rightarrow> z) = x \<rightarrow> y \<rightarrow> z"
+  by (metis connect_monoid monoid.axioms(1) semigroup.assoc)
+
 lemma r_decomposition: "x = x \<oplus> x \<oplus> \<epsilon>"
 proof -
   have "x = x \<rightarrow> \<epsilon> \<rightarrow> \<epsilon>"
@@ -203,7 +206,7 @@ fun fold :: "'v pre_algebraic_graph \<Rightarrow> 'g" where
   "fold (x \<oplus> y) = (fold x) \<oplus> (fold y)" |
   "fold (x \<rightarrow> y) = (fold x) \<rightarrow> (fold y)"
 
-definition algebraic_graph_eq :: "'v pre_algebraic_graph \<Rightarrow> 'v pre_algebraic_graph \<Rightarrow> bool" where
+definition algebraic_graph_eq :: "'v pre_algebraic_graph \<Rightarrow> 'v pre_algebraic_graph \<Rightarrow> bool" (infix \<open>\<equiv>\<^sub>A\<close> 50) where
   "algebraic_graph_eq x y \<equiv> fold x = fold y"
 
 lemma algebraic_graph_eqI: "fold x = fold y \<Longrightarrow> algebraic_graph_eq x y"
@@ -212,11 +215,37 @@ lemma algebraic_graph_eqI: "fold x = fold y \<Longrightarrow> algebraic_graph_eq
 lemma equivp_algebraic_graph_eq: "equivp algebraic_graph_eq"
   by (auto simp: algebraic_graph_eq_def equivp_def fun_eq_iff)
 
-
-
-
 end
 
+subsection \<open>Equalities for deep embedding\<close>
+context algebraic_digraph
+begin
+
+lemma deep_embedding_overlay_commute: "x \<oplus> y \<equiv>\<^sub>A y \<oplus> x"
+  by (auto intro: algebraic_graph_eqI simp: overlay_comm)
+
+lemma deep_embedding_overlay_assoc: "x \<oplus> (y \<oplus> z) \<equiv>\<^sub>A (x \<oplus> y) \<oplus> z"
+  by (auto intro: algebraic_graph_eqI simp: overlay_assoc)
+
+lemma deep_embedding_connect_assoc: "(x \<rightarrow> y) \<rightarrow> z \<equiv>\<^sub>A x \<rightarrow> (y \<rightarrow> z)"
+  by (auto intro: algebraic_graph_eqI simp: connect_assoc)
+
+lemma deep_embedding_connect_left_neutral: "\<epsilon> \<rightarrow> x \<equiv>\<^sub>A x"
+  by (simp add: algebraic_graph_eqI monoid.left_neutral)
+
+lemma deep_embedding_connect_right_neutral: "x \<rightarrow> \<epsilon> \<equiv>\<^sub>A x"
+  by (simp add: algebraic_graph_eqI monoid.right_neutral)
+
+lemma deep_embedding_connect_distr_overlay_l: "x \<rightarrow> (y \<oplus> z) \<equiv>\<^sub>A x \<rightarrow> y \<oplus> x \<rightarrow> z "
+  by (auto intro: algebraic_graph_eqI simp: connect_distr_overlay_l)
+
+lemma deep_embedding_connect_distr_overlay_r: "(x \<oplus> y) \<rightarrow> z \<equiv>\<^sub>A x \<rightarrow> z \<oplus> y \<rightarrow> z"
+  by (auto intro: algebraic_graph_eqI simp: connect_distr_overlay_r)
+
+lemma deep_embedding_decomp: "x \<rightarrow> y \<rightarrow> z \<equiv>\<^sub>A x \<rightarrow> y \<oplus> x \<rightarrow> z \<oplus> y \<rightarrow> z"
+  by (auto intro: algebraic_graph_eqI simp: decomp)
+
+end
 
 
 end
