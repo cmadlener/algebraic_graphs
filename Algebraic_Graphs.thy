@@ -1,195 +1,7 @@
 theory Algebraic_Graphs
-  imports 
-    Main
+  imports Main
 begin
 
-subsection \<open>Core\<close>
-locale algebraic_pre_graph = 
-  fixes empty :: 'g ("\<epsilon>")
-    and vertex :: "'v \<Rightarrow> 'g"
-    and overlay :: "'g \<Rightarrow> 'g \<Rightarrow> 'g" (infixl \<open>\<oplus>\<close> 75)
-    and connect :: "'g \<Rightarrow> 'g \<Rightarrow> 'g" (infixl \<open>\<rightarrow>\<close> 80)
-begin
-
-fun edge :: "'v \<Rightarrow> 'v \<Rightarrow> 'g" where
-  "edge u v = (vertex u) \<rightarrow> (vertex v)"
-
-fun edges :: "('v \<times> 'v) list \<Rightarrow> 'g" where
-  "edges es = foldr (\<oplus>) (map (\<lambda>(u,v). edge u v) es) \<epsilon>"
-
-fun vertices :: "'v list \<Rightarrow> 'g" where
-  "vertices vs = foldr (\<oplus>) (map vertex vs) \<epsilon>"
-
-fun clique :: "'v list \<Rightarrow> 'g" where
-  "clique vs = foldr (\<rightarrow>) (map vertex vs) \<epsilon>"
-
-fun graph :: "'v list \<Rightarrow> ('v \<times> 'v) list \<Rightarrow> 'g" where
-  "graph vs es = vertices vs \<oplus> edges es"
-
-definition subgraph :: "'g \<Rightarrow> 'g \<Rightarrow> bool" (infixl \<open>\<sqsubseteq>\<close> 50) where
-  "x \<sqsubseteq> y \<equiv> x \<oplus> y = y"
-
-fun path :: "'v list \<Rightarrow> 'g" where
-  "path [] = empty" |
-  "path [x] = vertex x" |
-  "path xs = edges (zip xs (tl xs))"
-
-fun circuit :: "'v list \<Rightarrow> 'g" where
-  "circuit [] = empty" |
-  "circuit (x#xs) = path (x#xs @ [x])"
-
-fun star :: "'v \<Rightarrow> 'v list \<Rightarrow> 'g" where
-  "star x ys = connect (vertex x) (vertices ys)"
-end
-
-subsection \<open>Directed graphs\<close>
-locale algebraic_digraph = algebraic_pre_graph + 
-assumes overlay_comm: "x \<oplus> y = y \<oplus> x"
-  and overlay_assoc: "x \<oplus> (y \<oplus> z) = (x \<oplus> y) \<oplus>  z"
-  and connect_monoid[simp]: "monoid connect \<epsilon>"
-  and connect_distr_overlay_l: "x \<rightarrow> (y \<oplus> z) = x \<rightarrow> y \<oplus> x \<rightarrow> z"
-  and connect_distr_overlay_r: "(x \<oplus> y) \<rightarrow> z = x \<rightarrow> z \<oplus> y \<rightarrow> z"
-  and decomp: "x \<rightarrow> y \<rightarrow> z = x \<rightarrow> y \<oplus> x \<rightarrow> z \<oplus> y \<rightarrow> z"
-
-begin
-
-lemma connect_assoc: "x \<rightarrow> (y \<rightarrow> z) = x \<rightarrow> y \<rightarrow> z"
-  by (metis connect_monoid monoid.axioms(1) semigroup.assoc)
-
-lemma r_decomposition: "x = x \<oplus> x \<oplus> \<epsilon>"
-proof -
-  have "x = x \<rightarrow> \<epsilon> \<rightarrow> \<epsilon>"
-    by (simp add: monoid.right_neutral)
-  also have "\<dots> = (x \<rightarrow> \<epsilon>) \<oplus> (x \<rightarrow> \<epsilon>) \<oplus> (\<epsilon> \<rightarrow> \<epsilon>)"
-    by (simp add: decomp)
-  also have "\<dots> = x \<oplus> x \<oplus> \<epsilon>"
-    by (simp add: monoid.right_neutral)
-  finally show ?thesis .
-qed
-
-lemma overlay_empty_neutral: "x \<oplus> \<epsilon> = x"
-proof -
-  have "x = x \<oplus> x \<oplus> \<epsilon>"
-    by (simp add: r_decomposition)
-  also have "\<dots> = x \<oplus> x \<oplus> (\<epsilon> \<oplus> \<epsilon> \<oplus> \<epsilon>)"
-    using r_decomposition by auto
-  also have "\<dots> = (x \<oplus> \<epsilon>) \<oplus> (x \<oplus> \<epsilon>) \<oplus> \<epsilon>"
-    by (metis overlay_assoc overlay_comm)
-  also have "\<dots> = x \<oplus> \<epsilon>"
-    by (simp flip: r_decomposition)
-  finally show ?thesis by simp
-qed
-
-lemma overlay_idempotent[simp]: "x \<oplus> x = x"
-  using overlay_empty_neutral r_decomposition by auto
-
-lemma left_absorption: "x \<oplus> x \<rightarrow> y = x \<rightarrow> y"
-proof -
-  have "x \<oplus> x \<rightarrow> y = (x \<rightarrow> \<epsilon>) \<oplus> (x \<rightarrow> y)"
-    by (simp add: monoid.right_neutral)
-  also have "\<dots> = x \<rightarrow> (\<epsilon> \<oplus> y)"
-    by (simp add: connect_distr_overlay_l)
-  finally show ?thesis
-    by (metis overlay_comm overlay_empty_neutral)
-qed
-
-lemma right_absorption: "y \<oplus> x \<rightarrow> y = x \<rightarrow> y"
-proof -
-  have "y \<oplus> x \<rightarrow> y = (\<epsilon> \<rightarrow> y) \<oplus> (x \<rightarrow> y)"
-    by (simp add: monoid.left_neutral)
-  also have "\<dots> = (\<epsilon> \<oplus> x) \<rightarrow> y"
-    by (simp add: connect_distr_overlay_r)
-  finally show ?thesis
-    by (metis overlay_comm overlay_empty_neutral)
-qed
-
-lemma saturation: "x \<rightarrow> x \<rightarrow> x = x \<rightarrow> x"
-  by (simp add: decomp)
-
-lemma comm_monoid_overlay[simp]: "comm_monoid (\<oplus>) \<epsilon>"
-  by (unfold_locales; metis overlay_assoc overlay_empty_neutral overlay_comm)
-
-lemma "vertex x = vertices [x]"
-  by (simp add: overlay_empty_neutral)
-
-lemma "edge x y = clique [x, y]"
-  by (simp add: monoid.right_neutral)
-
-lemma clique_Nil: "clique [] = \<epsilon>"
-  by simp
-
-lemma clique_append: "clique (xs @ ys) = (clique xs) \<rightarrow> (clique ys)"
-  by (induction xs)
-     (auto simp add: monoid.left_neutral, metis connect_monoid monoid.axioms(1) semigroup.assoc)
-
-
-
-lemma subgraphI: "x \<oplus> y = y \<Longrightarrow> x \<sqsubseteq> y"
-  unfolding subgraph_def by simp
-
-\<comment> \<open>TODO: partial_order from HOL-Algebra.Order ?\<close>
-lemma
-  shows subgraph_refl: "x \<sqsubseteq> x"
-    and subgraph_antisym: "x \<sqsubseteq> y \<Longrightarrow> y \<sqsubseteq> x \<Longrightarrow> x = y"
-    and subgraph_trans: "x \<sqsubseteq> y \<Longrightarrow> y \<sqsubseteq> z \<Longrightarrow> x \<sqsubseteq> z"
-  by (auto intro: subgraphI simp: subgraph_def overlay_comm)
-     (metis overlay_assoc)
-
-lemma empty_least: "\<epsilon> \<sqsubseteq> x"
-  using overlay_empty_neutral[simplified overlay_comm]
-  by (auto intro: subgraphI)
-
-lemma subgraph_overlay: "x \<sqsubseteq> (x \<oplus> y)"
-  by (auto intro: subgraphI simp: overlay_assoc)
-
-lemma subgraph_overlay_connect: "x \<oplus> y \<sqsubseteq> x \<rightarrow> y"
-  by (auto intro!: subgraphI)
-     (metis left_absorption overlay_assoc right_absorption)
-
-lemma subgraph_monotonicity:
-  assumes "x \<sqsubseteq> y"
-  shows "x \<oplus> z \<sqsubseteq> y \<oplus> z"
-    and "x \<rightarrow> z \<sqsubseteq> y \<rightarrow> z"
-    and "z \<rightarrow> x \<sqsubseteq> z \<rightarrow> y"
-  using assms
-  by (auto intro!: subgraphI simp: subgraph_def)
-     (metis overlay_assoc overlay_comm overlay_idempotent connect_distr_overlay_r connect_distr_overlay_l)+
-
-lemma vertices_subgraph_clique: "vertices xs \<sqsubseteq> clique xs"
-  by (induction xs)
-     (auto intro: subgraphI simp: subgraph_def, metis left_absorption overlay_assoc right_absorption)
-end
-
-subsection \<open>Undirected Graphs\<close>
-locale algebraic_graph = algebraic_pre_graph + 
-  assumes overlay_comm: "x \<oplus> y = y \<oplus> x"
-    and overlay_assoc: "x \<oplus> (y \<oplus> z) = (x \<oplus> y) \<oplus> z"
-    and connect_comm: "x \<rightarrow> y = y \<rightarrow> x"
-    and connect_identity: "x \<rightarrow> \<epsilon> = x"
-    and left_distr: "x \<rightarrow> (y \<oplus> z) = x \<rightarrow> y \<oplus> x \<rightarrow> z"
-    and left_decomp: "(x \<rightarrow> y) \<rightarrow> z = x \<rightarrow> y \<oplus> x \<rightarrow> z \<oplus> y \<rightarrow> z"
-begin
-
-lemma connect_assoc: "(x \<rightarrow> y) \<rightarrow> z = x \<rightarrow> (y \<rightarrow> z)"
-  by (metis connect_comm left_decomp overlay_comm)
-
-end
-
-subsection \<open>Reflexive Graphs\<close>
-locale algebraic_reflexive_graph = algebraic_digraph +
-  assumes refl: "v = v \<rightarrow> v"
-begin
-end
-
-subsection \<open>Transitive Graphs\<close>
-text \<open>
-  "Original" motivation: parallel (overlay) and sequential (connect) composition
-\<close>
-locale algebraic_transitive_graph = algebraic_digraph +
-  assumes trans: "y \<noteq> \<epsilon> \<Longrightarrow> x \<rightarrow> y \<oplus> y \<rightarrow> z \<oplus> x \<rightarrow> z = x \<rightarrow> y \<oplus> y \<rightarrow> z"
-begin
-
-end
 
 datatype 'a pre_algebraic_graph = 
   Empty (\<open>\<epsilon>\<close>) | 
@@ -197,55 +9,259 @@ datatype 'a pre_algebraic_graph =
   Overlay "'a pre_algebraic_graph" "'a pre_algebraic_graph" (infixl \<open>\<oplus>\<close> 75) |
   Connect "'a pre_algebraic_graph" "'a pre_algebraic_graph" (infixl \<open>\<rightarrow>\<close> 80)
 
-context algebraic_pre_graph
-begin
+fun edge :: "'a \<Rightarrow> 'a \<Rightarrow> 'a pre_algebraic_graph" where
+  "edge u v = Vertex u \<rightarrow> Vertex v"
 
-fun fold :: "'v pre_algebraic_graph \<Rightarrow> 'g" where
-  "fold \<epsilon> = \<epsilon>" |
-  "fold (Vertex x) = vertex x" |
-  "fold (x \<oplus> y) = (fold x) \<oplus> (fold y)" |
-  "fold (x \<rightarrow> y) = (fold x) \<rightarrow> (fold y)"
+fun vertices :: "'a list \<Rightarrow> 'a pre_algebraic_graph" where
+  "vertices [] = \<epsilon>" |
+  "vertices (a#as) = Vertex a \<oplus> vertices as"
 
-definition algebraic_graph_eq :: "'v pre_algebraic_graph \<Rightarrow> 'v pre_algebraic_graph \<Rightarrow> bool" (infix \<open>\<equiv>\<^sub>A\<close> 50) where
-  "algebraic_graph_eq x y \<equiv> fold x = fold y"
+fun edges :: "('a \<times> 'a) list \<Rightarrow> 'a pre_algebraic_graph" where
+  "edges [] = \<epsilon>" |
+  "edges ((u,v)#es) = edge u v \<oplus> edges es"
 
-lemma algebraic_graph_eqI: "fold x = fold y \<Longrightarrow> algebraic_graph_eq x y"
-  unfolding algebraic_graph_eq_def .
+fun overlays :: "('a pre_algebraic_graph) list \<Rightarrow> 'a pre_algebraic_graph" where
+  "overlays [] = \<epsilon>" |
+  "overlays (g#gs) = g \<oplus> overlays gs"
 
-lemma equivp_algebraic_graph_eq: "equivp algebraic_graph_eq"
-  by (auto simp: algebraic_graph_eq_def equivp_def fun_eq_iff)
+fun connects :: "('a pre_algebraic_graph) list \<Rightarrow> 'a pre_algebraic_graph" where
+  "connects [] = \<epsilon>" |
+  "connects (g#gs) = g \<rightarrow> connects gs"
 
-end
+fun foldg :: "'b \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'b) \<Rightarrow> ('b \<Rightarrow> 'b \<Rightarrow> 'b) \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'b" where
+  "foldg e _ _ _ \<epsilon> = e" |
+  "foldg _ v _ _ (Vertex a) = v a" |
+  "foldg e v ov c (x \<oplus> y) = ov (foldg e v ov c x) (foldg e v ov c y)" |
+  "foldg e v ov c (x \<rightarrow> y) = c (foldg e v ov c x) (foldg e v ov c y)"
 
-subsection \<open>Equalities for deep embedding\<close>
-context algebraic_digraph
-begin
+fun buildg :: "('a pre_algebraic_graph \<Rightarrow> ('a \<Rightarrow> 'a pre_algebraic_graph) \<Rightarrow> ('a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph) \<Rightarrow> ('a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph) \<Rightarrow> 'a pre_algebraic_graph) \<Rightarrow> 'a pre_algebraic_graph" where
+  "buildg f = f \<epsilon> Vertex (\<oplus>) (\<rightarrow>)"
 
-lemma deep_embedding_overlay_commute: "x \<oplus> y \<equiv>\<^sub>A y \<oplus> x"
-  by (auto intro: algebraic_graph_eqI simp: overlay_comm)
+fun isEmpty :: "'a pre_algebraic_graph \<Rightarrow> bool" where
+  "isEmpty \<epsilon> = True" |
+  "isEmpty (Vertex _) = False" |
+  "isEmpty (x \<oplus> y) = (isEmpty x \<and> isEmpty y)" |
+  "isEmpty (x \<rightarrow> y) = (isEmpty x \<and> isEmpty y)"
 
-lemma deep_embedding_overlay_assoc: "x \<oplus> (y \<oplus> z) \<equiv>\<^sub>A (x \<oplus> y) \<oplus> z"
-  by (auto intro: algebraic_graph_eqI simp: overlay_assoc)
+fun size :: "'a pre_algebraic_graph \<Rightarrow> nat" where
+  "size \<epsilon> = 1" |
+  "size (Vertex _) = 1" |
+  "size (x \<oplus> y) = size x + size y" |
+  "size (x \<rightarrow> y) = size x + size y"
 
-lemma deep_embedding_connect_assoc: "(x \<rightarrow> y) \<rightarrow> z \<equiv>\<^sub>A x \<rightarrow> (y \<rightarrow> z)"
-  by (auto intro: algebraic_graph_eqI simp: connect_assoc)
+fun hasVertex :: "'a \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> bool" where
+  "hasVertex _ \<epsilon> = False" |
+  "hasVertex a (Vertex b) = (a = b)" |
+  "hasVertex a (x \<oplus> y) = (hasVertex a x \<or> hasVertex a y)" |
+  "hasVertex a (x \<rightarrow> y) = (hasVertex a x \<or> hasVertex a y)"
 
-lemma deep_embedding_connect_left_neutral: "\<epsilon> \<rightarrow> x \<equiv>\<^sub>A x"
-  by (simp add: algebraic_graph_eqI monoid.left_neutral)
+fun hasEdge :: "'a \<Rightarrow> 'a \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> bool" where
+  "hasEdge _ _ \<epsilon> = False" |
+  "hasEdge _ _ (Vertex _) = False" |
+  "hasEdge u v (x \<oplus> y) = (hasEdge u v x \<or> hasEdge u v y)" |
+  "hasEdge u v (x \<rightarrow> y) = (hasEdge u v x \<or> hasEdge u v y \<or> (hasVertex u x \<and> hasVertex v y))"
 
-lemma deep_embedding_connect_right_neutral: "x \<rightarrow> \<epsilon> \<equiv>\<^sub>A x"
-  by (simp add: algebraic_graph_eqI monoid.right_neutral)
+fun vertexSet :: "'a pre_algebraic_graph \<Rightarrow> 'a set" where
+  "vertexSet \<epsilon> = {}" |
+  "vertexSet (Vertex u) = {u}" |
+  "vertexSet (x \<oplus> y) = vertexSet x \<union> vertexSet y" |
+  "vertexSet (x \<rightarrow> y) = vertexSet x \<union> vertexSet y"
 
-lemma deep_embedding_connect_distr_overlay_l: "x \<rightarrow> (y \<oplus> z) \<equiv>\<^sub>A x \<rightarrow> y \<oplus> x \<rightarrow> z "
-  by (auto intro: algebraic_graph_eqI simp: connect_distr_overlay_l)
+fun edgeSet :: "'a pre_algebraic_graph \<Rightarrow> ('a \<times> 'a) set" where
+  "edgeSet \<epsilon> = {}" |
+  "edgeSet (Vertex _) = {}" |
+  "edgeSet (x \<oplus> y) = edgeSet x \<union> edgeSet y" |
+  "edgeSet (x \<rightarrow> y) = edgeSet x \<union> edgeSet y \<union> {(u,v)| u v. u \<in> vertexSet x \<and> v \<in> vertexSet y}"
 
-lemma deep_embedding_connect_distr_overlay_r: "(x \<oplus> y) \<rightarrow> z \<equiv>\<^sub>A x \<rightarrow> z \<oplus> y \<rightarrow> z"
-  by (auto intro: algebraic_graph_eqI simp: connect_distr_overlay_r)
+fun transpose :: "'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" where
+  "transpose \<epsilon> = \<epsilon>" |
+  "transpose (Vertex a) = Vertex a" |
+  "transpose (x \<oplus> y) = transpose x \<oplus> transpose y" |
+  "transpose (x \<rightarrow> y) = transpose y \<rightarrow> transpose x"
 
-lemma deep_embedding_decomp: "x \<rightarrow> y \<rightarrow> z \<equiv>\<^sub>A x \<rightarrow> y \<oplus> x \<rightarrow> z \<oplus> y \<rightarrow> z"
-  by (auto intro: algebraic_graph_eqI simp: decomp)
+fun fmap :: "('a \<Rightarrow> 'b) \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'b pre_algebraic_graph" where
+  "fmap _ \<epsilon> = \<epsilon>" |
+  "fmap f (Vertex a) = Vertex (f a)" |
+  "fmap f (x \<oplus> y) = (fmap f x) \<oplus> (fmap f y)" |
+  "fmap f (x \<rightarrow> y) = (fmap f x) \<rightarrow> (fmap f y)"
 
-end
+fun replaceVertex :: "'a \<Rightarrow> 'a \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" where
+  "replaceVertex u v = fmap (\<lambda>w. if w = u then v else w)"
+
+fun mergeVertices :: "('a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" where
+  "mergeVertices p v = fmap (\<lambda>w. if p w then v else w)"
+
+fun splitVertex :: "'a \<Rightarrow> 'a list \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" where
+  "splitVertex _ _ \<epsilon> = \<epsilon>" |
+  "splitVertex u vs (Vertex v) = (if u = v then vertices vs else Vertex v)" |
+  "splitVertex u vs (x \<oplus> y) = splitVertex u vs x \<oplus> splitVertex u vs y" |
+  "splitVertex u vs (x \<rightarrow> y) = splitVertex u vs x \<rightarrow> splitVertex u vs y"
+
+fun bind :: "'a pre_algebraic_graph \<Rightarrow> ('a \<Rightarrow> 'a pre_algebraic_graph) \<Rightarrow> 'a pre_algebraic_graph" where
+  "bind \<epsilon> _ = \<epsilon>" |
+  "bind (Vertex u) f = f u" |
+  "bind (x \<oplus> y) f = bind x f \<oplus> bind y f" |
+  "bind (x \<rightarrow> y) f = bind x f \<rightarrow> bind y f"
+
+fun induce :: "('a \<Rightarrow> bool) \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" where
+  "induce p g = bind g (\<lambda>v. if p v then Vertex v else \<epsilon>)"
+
+fun removeVertex :: "'a \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" where
+  "removeVertex v = induce (\<lambda>u. u \<noteq> v)"
+
+lemma vertices_vertexSet: "vertexSet (vertices xs) = set xs"
+  by (induction xs) auto
+
+lemma vertices_edgeSet: "edgeSet (vertices xs) = {}"
+  by (induction xs) auto
+
+lemma edges_vertexSet: "vertexSet (edges es) = set (map fst es) \<union> set (map snd es)"
+  by (induction es) force+
+
+lemma edges_edgeSet: "edgeSet (edges es) = set es"
+  by (induction es) force+
 
 
+lemma foldg_id: "foldg \<epsilon> Vertex (\<oplus>) (\<rightarrow>) g = g"
+  by (induction g) auto
+
+lemma foldg_transpose: "foldg \<epsilon> Vertex (\<oplus>) (\<lambda>x y. y \<rightarrow> x) g = transpose g"
+  by (induction g) auto
+
+lemma foldg_size: "foldg 1 (\<lambda>_. 1) (+) (+) g = size g"
+  by (induction g) auto
+
+lemma foldg_isEmpty: "foldg True (\<lambda>_. False) (\<and>) (\<and>) g = isEmpty g"
+  by (induction g) auto
+
+lemma foldg_hasVertex: "foldg False (\<lambda>x. a = x) (\<or>) (\<or>) g = hasVertex a g"
+  by (induction g) auto
+
+
+lemma buildg_f: "buildg f = f \<epsilon> Vertex (\<oplus>) (\<rightarrow>)"
+  by simp
+
+lemma buildg_empty: "buildg (\<lambda>e _ _ _. e) = \<epsilon>"
+  by simp
+
+lemma buildg_vertex: "buildg (\<lambda>_ v _ _. v x) = Vertex x"
+  by simp
+
+lemma buildg_overlay: "buildg (\<lambda>e v ov c. ov (foldg e v ov c x) (foldg e v ov c y)) = x \<oplus> y"
+  by (auto simp add: foldg_id)
+
+lemma buildg_connect: "buildg (\<lambda>e v ov c. c (foldg e v ov c x) (foldg e v ov c y)) = x \<rightarrow> y"
+  by (auto simp add: foldg_id)
+
+lemma buildg_vertices: "buildg (\<lambda>e v ov _ . foldr ov  (map v xs) e) = vertices xs"
+  by (induction xs) auto
+
+lemma buildg_transpose: "buildg (\<lambda>e v ov c. foldg e v ov (\<lambda>x y. c y x) g) = transpose g"
+  by (induction g) auto
+
+
+lemma fmap_vertexSet: "vertexSet (fmap f g) = f ` vertexSet g"
+  by (induction g) auto
+
+lemma fmap_edgeSet: "edgeSet (fmap f g) = {(f u, f v)| u v. (u,v) \<in> edgeSet g}"
+  by (induction g) (auto simp: fmap_vertexSet)
+
+lemma replaceVertex_mergeVertices: "replaceVertex u v g = mergeVertices (\<lambda>w. w = u) v g"
+  by (induction g) auto
+
+lemma replaceVertex_removes: "u \<noteq> v \<Longrightarrow> u \<notin> vertexSet (replaceVertex u v g)"
+  by (induction g) auto
+
+lemma replaceVertex_id: "u \<notin> vertexSet g \<Longrightarrow> replaceVertex u v g = g"
+  by (induction g) auto
+
+lemma replaceVertex_vertexSet:
+  shows "u \<in> vertexSet g \<Longrightarrow> vertexSet (replaceVertex u v g) = vertexSet g - {u} \<union> {v}"
+    and "u \<notin> vertexSet g \<Longrightarrow> vertexSet (replaceVertex u v g) = vertexSet g"
+  by (auto simp: fmap_vertexSet)
+
+lemma replaceVertex_edge_1:
+  assumes "(u,w) \<in> edgeSet g" "u \<noteq> w"
+  shows "(v,w) \<in> edgeSet (replaceVertex u v g)"
+  using assms
+  by (induction g) (auto simp: fmap_vertexSet)
+
+lemma replaceVertex_edge_2:
+  assumes "(w,u) \<in> edgeSet g" "u \<noteq> w"
+  shows "(w,v) \<in> edgeSet (replaceVertex u v g)"
+  using assms
+  by (induction g) (auto simp: fmap_vertexSet)
+
+lemma replaceVertex_edge_3:
+  assumes "(u,u) \<in> edgeSet g"
+  shows "(v,v) \<in> edgeSet (replaceVertex u v g)"
+  using assms
+  by (induction g) (auto simp: fmap_vertexSet)
+
+lemma replaceVertex_edge_4:
+  assumes "(s,t) \<in> edgeSet g" "s \<noteq> u" "t \<noteq> u"
+  shows "(s,t) \<in> edgeSet (replaceVertex u v g)"
+  using assms
+  by (induction g) (auto simp: fmap_vertexSet)
+
+lemmas replaceVertex_edge = replaceVertex_edge_1 replaceVertex_edge_2 replaceVertex_edge_3 replaceVertex_edge_4
+
+lemma replaceVertex_edges:
+  "edgeSet (replaceVertex u v g) = {(if s = u then v else s, if t = u then v else t)| s t. (s,t) \<in> edgeSet g}"
+  by (auto simp: fmap_edgeSet)
+
+lemma mergeVertices_id:
+  assumes "\<And>u. u \<in> vertexSet g \<Longrightarrow> \<not> p u"
+  shows "mergeVertices p v g = g"
+  using assms
+  by (induction g) auto
+
+lemma mergeVertices_vertexSet:
+  assumes "u \<in> vertexSet g" "u \<noteq> v" "p u"
+  shows "v \<in> vertexSet (mergeVertices p v g)" "u \<notin> vertexSet (mergeVertices p v g)"
+  using assms
+  by (induction g) (auto simp: fmap_vertexSet)
+
+
+lemma splitVertex_id:
+  assumes "u \<notin> vertexSet g"
+  shows "splitVertex u vs g = g"
+  using assms
+  by (induction g) auto
+
+lemma splitVertex_vertexSet':
+  "{v. v \<in> vertexSet g \<and> u \<noteq> v} \<subseteq> vertexSet (splitVertex u vs g)"
+  by (induction g) auto
+
+lemma splitVertex_vertexSet:
+  assumes "u \<in> vertexSet g"
+  shows "vertexSet (splitVertex u vs g) = vertexSet g - {u} \<union> set vs"
+  using assms splitVertex_vertexSet'
+  by (induction g) (fastforce simp: splitVertex_id vertices_vertexSet)+
+
+lemma splitVertex_edge_1:
+  assumes "(u,w) \<in> edgeSet g" "u \<noteq> w"
+  shows "\<And>v. v \<in> set vs \<Longrightarrow> (v,w) \<in> edgeSet (splitVertex u vs g)"
+  using assms splitVertex_vertexSet'
+  by (induction g) (fastforce simp: splitVertex_vertexSet)+
+
+lemma splitVertex_edge_2:
+  assumes "(w,u) \<in> edgeSet g" "u \<noteq> w"
+  shows "\<And>v. v \<in> set vs \<Longrightarrow> (w,v) \<in> edgeSet (splitVertex u vs g)"
+  using assms splitVertex_vertexSet'
+  by (induction g) (fastforce simp: splitVertex_vertexSet)+
+
+lemma splitVertex_edge_3:
+  assumes "(u,u) \<in> edgeSet g"
+  shows "\<And>v w. v \<in> set vs \<Longrightarrow> w \<in> set vs \<Longrightarrow> (v,w) \<in> edgeSet (splitVertex u vs g)"
+  using assms
+  by (induction g) (auto simp: splitVertex_vertexSet)
+
+lemma splitVertex_edge_4:
+  assumes "(s,t) \<in> edgeSet g" "s \<noteq> u" "t \<noteq> u"
+  shows "(s,t) \<in> edgeSet (splitVertex u vs g)"
+  using assms splitVertex_vertexSet'
+  by (induction g) (fastforce simp: splitVertex_vertexSet)+
+
+lemmas splitVertex_edge = splitVertex_edge_1 splitVertex_edge_2 splitVertex_edge_3 splitVertex_edge_4
 end

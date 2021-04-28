@@ -1,7 +1,7 @@
 theory Algebraic_Digraph
   imports 
     Graph_Theory.Digraph_Component
-    Algebraic_Graphs
+    Algebraic_Graphs_Class
 begin
 
 fun overlay_pair_digraph :: "'a pair_pre_digraph \<Rightarrow> 'a pair_pre_digraph \<Rightarrow> 'a pair_pre_digraph" where
@@ -36,7 +36,6 @@ definition "pair_digraph_empty \<equiv> \<lparr> pverts = {}, parcs = {} \<rparr
 lemma wf_empty: "pair_wf_digraph pair_digraph_empty"
   by standard
      (simp_all add: pair_digraph_empty_def)
-
 
 interpretation algebraic_pair_digraph: algebraic_digraph pair_digraph_empty vertex_pair_digraph overlay_pair_digraph connect_pair_digraph
 proof
