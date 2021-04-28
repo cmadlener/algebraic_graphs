@@ -49,17 +49,17 @@ fun size :: "'a pre_algebraic_graph \<Rightarrow> nat" where
   "size (x \<oplus> y) = size x + size y" |
   "size (x \<rightarrow> y) = size x + size y"
 
-fun hasVertex :: "'a \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> bool" where
-  "hasVertex _ \<epsilon> = False" |
-  "hasVertex a (Vertex b) = (a = b)" |
-  "hasVertex a (x \<oplus> y) = (hasVertex a x \<or> hasVertex a y)" |
-  "hasVertex a (x \<rightarrow> y) = (hasVertex a x \<or> hasVertex a y)"
+fun hasVertex :: "'a pre_algebraic_graph \<Rightarrow> 'a \<Rightarrow> bool" where
+  "hasVertex \<epsilon> _ = False" |
+  "hasVertex (Vertex b) a = (a = b)" |
+  "hasVertex (x \<oplus> y) a = (hasVertex x a \<or> hasVertex y a)" |
+  "hasVertex (x \<rightarrow> y) a = (hasVertex x a \<or> hasVertex y a)"
 
-fun hasEdge :: "'a \<Rightarrow> 'a \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> bool" where
-  "hasEdge _ _ \<epsilon> = False" |
-  "hasEdge _ _ (Vertex _) = False" |
-  "hasEdge u v (x \<oplus> y) = (hasEdge u v x \<or> hasEdge u v y)" |
-  "hasEdge u v (x \<rightarrow> y) = (hasEdge u v x \<or> hasEdge u v y \<or> (hasVertex u x \<and> hasVertex v y))"
+fun hasEdge :: "'a pre_algebraic_graph \<Rightarrow> 'a \<Rightarrow> 'a  \<Rightarrow> bool" where
+  "hasEdge \<epsilon> _ _ = False" |
+  "hasEdge (Vertex _) _ _ = False" |
+  "hasEdge (x \<oplus> y) u v = (hasEdge x u v \<or> hasEdge y u v)" |
+  "hasEdge (x \<rightarrow> y) u v = (hasEdge x u v \<or> hasEdge y u v \<or> (hasVertex x u \<and> hasVertex y v))"
 
 fun vertexSet :: "'a pre_algebraic_graph \<Rightarrow> 'a set" where
   "vertexSet \<epsilon> = {}" |
@@ -103,17 +103,39 @@ fun bind :: "'a pre_algebraic_graph \<Rightarrow> ('a \<Rightarrow> 'a pre_algeb
   "bind (x \<oplus> y) f = bind x f \<oplus> bind y f" |
   "bind (x \<rightarrow> y) f = bind x f \<rightarrow> bind y f"
 
-fun induce :: "('a \<Rightarrow> bool) \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" where
+definition induce :: "('a \<Rightarrow> bool) \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" where
   "induce p g = bind g (\<lambda>v. if p v then Vertex v else \<epsilon>)"
 
 fun removeVertex :: "'a \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" where
   "removeVertex v = induce (\<lambda>u. u \<noteq> v)"
+
+fun splitVertex' :: "'a \<Rightarrow> 'a list \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" where
+  "splitVertex' u vs g = bind g (\<lambda>v. if u = v then vertices vs else Vertex v)"
+
+lemma wellformed:
+  assumes "hasEdge g u v"
+  shows "hasVertex g u" "hasVertex g v"
+  using assms
+  by (induction g) auto
+
+lemma wellformed':
+  assumes "(u,v) \<in> edgeSet g"
+  shows "u \<in> vertexSet g" "v \<in> vertexSet g"
+  using assms
+  by (induction g) auto
+
+lemma vertexSet_eq: "u \<in> vertexSet g \<longleftrightarrow> hasVertex g u"
+  by (induction g) auto
+
+lemma edgeSet_eq: "(u,v) \<in> edgeSet g \<longleftrightarrow> hasEdge g u v"
+  by (induction g) (auto simp: vertexSet_eq)
 
 lemma vertices_vertexSet: "vertexSet (vertices xs) = set xs"
   by (induction xs) auto
 
 lemma vertices_edgeSet: "edgeSet (vertices xs) = {}"
   by (induction xs) auto
+
 
 lemma edges_vertexSet: "vertexSet (edges es) = set (map fst es) \<union> set (map snd es)"
   by (induction es) force+
@@ -134,7 +156,7 @@ lemma foldg_size: "foldg 1 (\<lambda>_. 1) (+) (+) g = size g"
 lemma foldg_isEmpty: "foldg True (\<lambda>_. False) (\<and>) (\<and>) g = isEmpty g"
   by (induction g) auto
 
-lemma foldg_hasVertex: "foldg False (\<lambda>x. a = x) (\<or>) (\<or>) g = hasVertex a g"
+lemma foldg_hasVertex: "foldg False (\<lambda>x. a = x) (\<or>) (\<or>) g = hasVertex g a"
   by (induction g) auto
 
 
@@ -264,4 +286,52 @@ lemma splitVertex_edge_4:
   by (induction g) (fastforce simp: splitVertex_vertexSet)+
 
 lemmas splitVertex_edge = splitVertex_edge_1 splitVertex_edge_2 splitVertex_edge_3 splitVertex_edge_4
+
+lemma induce_vertexSet: "vertexSet (induce p g) = {u. u \<in> vertexSet g \<and> p u}"
+  by (induction g) (auto simp: induce_def)
+
+lemma induce_vertexSet_p: "u \<in> vertexSet (induce p g) \<Longrightarrow> p u"
+  by (auto simp only: induce_vertexSet)
+
+lemma induce_remove: "\<not>p u \<Longrightarrow> u \<notin> vertexSet (induce p g)"
+  by (induction g) (auto simp: induce_def)
+
+lemma induce_subset: "vertexSet (induce p g) \<subseteq> vertexSet g"
+  using induce_vertexSet
+  by (metis (no_types, lifting) mem_Collect_eq subsetI)
+
+lemma induce_subset': "u \<in> vertexSet (induce p g) \<Longrightarrow> u \<in> vertexSet g"
+  using induce_subset by fast
+
+lemma induce_empty: "induce p \<epsilon> = \<epsilon>"
+  by (simp add: induce_def)
+
+lemma induce_vertex: "induce p (Vertex u) = (if p u then Vertex u else \<epsilon>)"
+  by (simp add: induce_def)
+
+lemma induce_overlay_distr: "induce p (g1 \<oplus> g2) = induce p g1 \<oplus> induce p g2"
+  by (simp add: induce_def)
+
+lemma induce_connect_distr: "induce p (g1 \<rightarrow> g2) = induce p g1 \<rightarrow> induce p g2"
+  by (simp add: induce_def)
+
+lemma in_induced_edgeSet_if: "(u,v) \<in> edgeSet g \<Longrightarrow> p u \<Longrightarrow> p v \<Longrightarrow> (u,v) \<in> edgeSet (induce p g)"
+  using induce_vertexSet
+  by (induction g) (fastforce simp: induce_def)+
+
+
+lemma in_induced_edgeSet: "(u,v) \<in> edgeSet (induce p g) \<Longrightarrow> (u,v) \<in> edgeSet g \<and> p u \<and> p v"
+  by (induction g)
+     (auto simp: induce_empty induce_vertex induce_overlay_distr induce_connect_distr
+           dest: induce_vertexSet_p induce_subset' split: if_splits)
+
+lemma induce_edgeSet: "edgeSet (induce p g) = {(u,v)| u v. (u,v) \<in> edgeSet g \<and> p u \<and> p v}"
+  by (auto dest: in_induced_edgeSet in_induced_edgeSet_if)
+
+lemma induce_edgeSet_subset: "edgeSet (induce p g) \<subseteq> edgeSet g"
+  by (auto dest: in_induced_edgeSet)
+
+
+lemma "splitVertex u vs g = splitVertex' u vs g"
+  by (induction g) auto
 end

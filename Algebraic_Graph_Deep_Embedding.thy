@@ -35,4 +35,23 @@ proof
        (smt (z3) AConnect.abs_eq AOverlay.abs_eq Quotient3_abs_rep Quotient3_algebraic_graph Quotient_algebraic_graph Quotient_rel_abs algebraic_pair_digraph.deep_embedding_decomp)
 qed
 
+notation algebraic_pair_digraph.algebraic_graph_eq (infix \<open>\<equiv>\<^sub>A\<close> 50)
+
+lemma fold_eq: "algebraic_pair_digraph.fold g = \<lparr> pverts = vertexSet g, parcs = edgeSet g \<rparr>"
+  by (induction g)
+     (auto simp: pair_digraph_empty_def algebraic_pre_graph.fold.simps)
+
+lemma algebraic_graph_eq_iff: "vertexSet x = vertexSet y \<and> edgeSet x = edgeSet y \<longleftrightarrow> (x \<equiv>\<^sub>A y)"
+  by (simp add: algebraic_pre_graph.algebraic_graph_eq_def fold_eq)
+
+lemma algebraic_graph_eqI[intro]: "vertexSet x = vertexSet y \<Longrightarrow> edgeSet x = edgeSet y \<Longrightarrow> x \<equiv>\<^sub>A y"
+  using algebraic_graph_eq_iff by blast
+
+lemma algebraic_graph_eq_fmap: "x \<equiv>\<^sub>A y \<Longrightarrow> fmap f x \<equiv>\<^sub>A fmap f y"
+  by (auto simp flip: algebraic_graph_eq_iff simp: fmap_edgeSet fmap_vertexSet)
+
+lift_definition Afmap :: "('a \<Rightarrow> 'b) \<Rightarrow> 'a algebraic_graph \<Rightarrow> 'b algebraic_graph" is fmap
+  using algebraic_graph_eq_fmap by blast
+
+
 end
