@@ -103,7 +103,7 @@ lemma hd_of_vwalk_bet: "vwalk_bet g u w v \<Longrightarrow> \<exists>w'. w = u #
 lemma hd_of_vwalk_bet': "vwalk_bet g u w v \<Longrightarrow> hd w = u"
   by (simp add: vwalk_bet_def)
 
-lemma last_of_vwakl_bet: "vwalk_bet g u w v \<Longrightarrow> last w = v"
+lemma last_of_vwalk_bet: "vwalk_bet g u w v \<Longrightarrow> last w = v"
   by (simp add: vwalk_bet_def)
 
 lemma append_vwalk_suff: "vwalk g (w1 @ w2) \<Longrightarrow> vwalk g w2"
