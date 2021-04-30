@@ -1,5 +1,5 @@
 theory Algebraic_Graphs
-  imports Main
+  imports Focus
 begin
 
 subsubsection \<open>Algebraic data type for graphs\<close>
@@ -76,6 +76,18 @@ fun edgeSet :: "'a pre_algebraic_graph \<Rightarrow> ('a \<times> 'a) set" where
   "edgeSet (x \<oplus> y) = edgeSet x \<union> edgeSet y" |
   "edgeSet (x \<rightarrow> y) = edgeSet x \<union> edgeSet y \<union> {(u,v)| u v. u \<in> vertexSet x \<and> v \<in> vertexSet y}"
 
+fun succs :: "'a pre_algebraic_graph \<Rightarrow> 'a \<Rightarrow> 'a set" where
+  "succs \<epsilon> _ = {}" |
+  "succs (Vertex v) _ = {}" |
+  "succs (x \<oplus> y) u = succs x u \<union> succs y u" |
+  "succs (x \<rightarrow> y) u = (if u \<in> vertexSet x then vertexSet y \<union> succs x u else {}) \<union> succs y u"
+
+fun preds :: "'a pre_algebraic_graph \<Rightarrow> 'a \<Rightarrow> 'a set" where
+  "preds \<epsilon> _ = {}" |
+  "preds (Vertex v) _ = {}" |
+  "preds (x \<oplus> y) u = preds x u \<union> preds y u" |
+  "preds (x \<rightarrow> y) u = (if u \<in> vertexSet y then vertexSet x \<union> preds y u else {}) \<union> preds x u"
+
 subsubsection \<open>Standard families of graphs\<close>
 fun path :: "'a list \<Rightarrow> 'a pre_algebraic_graph" where
   "path [] = \<epsilon>" |
@@ -88,6 +100,9 @@ fun circuit :: "'a list \<Rightarrow> 'a pre_algebraic_graph" where
 
 fun clique :: "'a list \<Rightarrow> 'a pre_algebraic_graph" where
   "clique vs = foldr (\<rightarrow>) (map Vertex vs) \<epsilon>"
+
+fun star :: "'a \<Rightarrow> 'a list \<Rightarrow> 'a pre_algebraic_graph" where
+  "star u vs = Vertex u \<rightarrow> vertices vs"
 
 
 subsection \<open>Graph transformation\<close>
@@ -143,6 +158,36 @@ fun simplify :: "'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" wh
       else if isEmpty y then simplify x
       else simplify x \<rightarrow> simplify y)" |
   "simplify g = g"
+
+definition focus :: "('a \<Rightarrow> bool) \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a Focus" where
+  "focus p = foldg emptyFocus (vertexFocus p) overlayFoci connectFoci"
+
+lemma focus_simps[simp]:
+  shows "focus p \<epsilon> = emptyFocus"
+    and "focus p (Vertex u) = vertexFocus p u"
+    and "focus p (x \<oplus> y) = overlayFoci (focus p x) (focus p y)"
+    and "focus p (x \<rightarrow> y) = connectFoci (focus p x) (focus p y)"
+  unfolding focus_def
+  by auto
+
+fun contextg :: "('a \<Rightarrow> bool) \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> ('a Context) option" where
+  "contextg p g = (
+    let f = focus p g in
+      if ok f then 
+        Some \<lparr> inputs = ins f, outputs = outs f \<rparr>
+      else
+        None
+  )"
+
+fun filterContext :: "'a \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" where
+  "filterContext s i out g = (
+    case contextg (\<lambda>u. u = s) g of
+      Some ctxt \<Rightarrow> induce (\<lambda>u. u \<noteq> s) g \<oplus> transpose (star s (filter i (inputs ctxt)))
+                                        \<oplus> star s (filter out (outputs ctxt)) |
+      None \<Rightarrow> g)"
+
+fun removeEdge :: "'a \<Rightarrow> 'a \<Rightarrow> 'a pre_algebraic_graph \<Rightarrow> 'a pre_algebraic_graph" where
+  "removeEdge s t = filterContext s (\<lambda>u. u \<noteq> s) (\<lambda>u. u \<noteq> t)"
 
 lemma wellformed:
   assumes "hasEdge g u v"
@@ -296,6 +341,12 @@ subsubsection \<open>\<^term>\<open>clique\<close>\<close>
 lemma clique_vertexSet: "vertexSet (clique vs) = set vs"
   by (induction vs) auto
 
+subsubsection \<open>\<^term>\<open>star\<close>\<close>
+lemma star_vertexSet: "vertexSet (star u vs) = {u} \<union> set vs"
+  by (induction vs) auto
+
+lemma star_edgeSet: "edgeSet (star u vs) = {(u,v)| v. v \<in> set vs}"
+  by (induction vs) auto
 
 subsubsection \<open>\<^term>\<open>fmap\<close>\<close>
 lemma fmap_vertexSet: "vertexSet (fmap f g) = f ` vertexSet g"
@@ -438,6 +489,13 @@ lemmas splitVertex_edge = splitVertex_edge_1 splitVertex_edge_2 splitVertex_edge
 lemma splitVertex_altdef_eq: "splitVertex' u vs g = splitVertex u vs g"
   by (induction g) auto
 
+subsubsection \<open>\<^term>\<open>transpose\<close>\<close>
+lemma transpose_vertexSet: "vertexSet (transpose g) = vertexSet g"
+  by (induction g) auto
+
+lemma transpose_edgeSet: "edgeSet (transpose g) = (edgeSet g)\<inverse>"
+  by (induction g) (auto simp: transpose_vertexSet)
+
 subsubsection \<open>\<^term>\<open>induce\<close>\<close>
 lemma induce_vertexSet: "vertexSet (induce p g) = {u. u \<in> vertexSet g \<and> p u}"
   by (induction g) (auto simp: induce_def)
@@ -445,8 +503,8 @@ lemma induce_vertexSet: "vertexSet (induce p g) = {u. u \<in> vertexSet g \<and>
 lemma induce_vertexSet_p: "u \<in> vertexSet (induce p g) \<Longrightarrow> p u"
   by (auto simp only: induce_vertexSet)
 
-lemma induce_remove: "\<not>p u \<Longrightarrow> u \<notin> vertexSet (induce p g)"
-  by (induction g) (auto simp: induce_def)
+lemma induce_remove: "\<not>p u \<Longrightarrow> u \<notin> vertexSet (induce p g)" 
+  using induce_vertexSet_p by fast
 
 lemma induce_subset: "vertexSet (induce p g) \<subseteq> vertexSet g"
   using induce_vertexSet
@@ -493,5 +551,92 @@ lemma simplify_edgeSet: "edgeSet (simplify g) = edgeSet g"
 lemma simplify_size: "size (simplify g) \<le> size g"
   using size_geq_1
   by (induction g) (auto intro: trans_le_add2)
+
+subsubsection \<open>\<^term>\<open>focus\<close>, \<^term>\<open>contextg\<close>, \<^term>\<open>succs\<close> and \<^term>\<open>preds\<close>\<close>
+lemma focus_verts_eq_vertexSet: "set (verts (focus p g)) = vertexSet g"
+  by (induction g) auto
+
+lemma focus_ok_iff: "ok (focus p g) \<longleftrightarrow> (\<exists>u \<in> vertexSet g. p u)"
+  by (induction g) auto
+
+lemma focus_ins: "set (ins (focus p g)) = {u| u v. p v \<and> (u,v) \<in> edgeSet g}"
+  by (induction g) (auto simp: focus_ok_iff focus_verts_eq_vertexSet dest: wellformed')
+
+lemma focus_outs: "set (outs (focus p g)) = {v| u v. p u \<and> (u,v) \<in> edgeSet g}"
+  by (induction g) (auto simp: focus_ok_iff focus_verts_eq_vertexSet dest: wellformed')
+
+lemma 
+  shows focus_ins_subs: "u \<in> set (ins (focus p g)) \<Longrightarrow> u \<in> vertexSet g"
+    and focus_outs_subs: "v \<in> set (outs (focus p g)) \<Longrightarrow> v \<in> vertexSet g"
+  by (auto simp: focus_ins focus_outs dest: wellformed')
+
+lemma contextg_Some_iff: "(\<exists>u \<in> vertexSet g. p u) \<longleftrightarrow> \<not>Option.is_none (contextg p g)"
+  by (induction g) (auto simp: focus_ok_iff Let_def)
+
+lemma contextg_SomeD: "u \<in> vertexSet g \<Longrightarrow> p u \<Longrightarrow> \<not>Option.is_none (contextg p g)"
+  using contextg_Some_iff by fast
+
+lemma contextg_sets:
+  assumes "ctxt = contextg p g"
+    and "u \<in> vertexSet g" "p u"
+  shows "set (inputs (the ctxt)) = {u| u v. p v \<and> (u,v) \<in> edgeSet g}"
+    and "set (outputs (the ctxt)) = {v| u v. p u \<and> (u,v) \<in> edgeSet g}"
+  using assms 
+  by (auto simp: focus_ok_iff focus_ins focus_outs Let_def )
+
+lemma succs_eq: "succs g u = {v. (u,v) \<in> edgeSet g}"
+  by (induction g) (auto dest: wellformed')
+
+lemma preds_eq: "preds g v = {u. (u,v) \<in> edgeSet g}"
+  by (induction g) (auto dest: wellformed')
+
+lemma
+  assumes "u \<in> vertexSet g"
+  shows contextg_succs: "set (outputs (the (contextg (\<lambda>v. u = v) g))) = succs g u"
+    and contextg_preds: "set (inputs (the (contextg (\<lambda>v. u = v) g))) = preds g u"
+  using assms
+  by (auto simp: contextg_sets succs_eq preds_eq)
+
+subsubsection \<open>\<^term>\<open>filterContext\<close> and \<^term>\<open>removeEdge\<close>\<close>
+lemma filterContext_vertexSet: "vertexSet (filterContext u i out g) = vertexSet g"
+  by (auto split: option.split
+              simp: focus_ok_iff Let_def induce_vertexSet transpose_vertexSet vertices_vertexSet
+                    focus_ins focus_outs dest: wellformed')
+
+lemma filterContext_edge_out:
+  assumes "(u,v) \<in> edgeSet g" "out v"
+  shows "(u,v) \<in> edgeSet (filterContext u i out g)"
+  using assms
+  by (auto split: option.split 
+           simp: focus_ok_iff Let_def induce_edgeSet transpose_edgeSet vertices_edgeSet 
+                 vertices_vertexSet focus_outs)
+
+lemma filterContext_egde_in:
+  assumes "(v,u) \<in> edgeSet g" "i v"
+  shows "(v,u) \<in> edgeSet (filterContext u i out g)"
+  using assms
+  by (auto split: option.split
+              simp: focus_ok_iff Let_def induce_edgeSet transpose_edgeSet vertices_edgeSet
+                    transpose_vertexSet vertices_vertexSet focus_ins)
+
+lemma filterContext_edge_out_remove:
+  assumes "\<not>out v" "v \<noteq> u \<or> \<not>i u" \<comment> \<open>If \<^term>\<open>u = v\<close> we need to distinguish the case where the edge can be kept as incoming edge.\<close>
+  shows "(u,v) \<notin> edgeSet (filterContext u i out g)"
+  using assms
+  by (auto split: option.split
+              simp: focus_ok_iff Let_def induce_edgeSet transpose_edgeSet vertices_edgeSet
+                    transpose_vertexSet vertices_vertexSet  dest: wellformed')
+
+lemma filterContext_edge_in_remove:
+  assumes "\<not>i v" "v \<noteq> u \<or> \<not>out u"
+  shows "(v,u) \<notin> edgeSet (filterContext u i out g)"
+  using assms
+  by (auto split: option.split
+              simp: focus_ok_iff Let_def induce_edgeSet transpose_edgeSet vertices_edgeSet
+                    transpose_vertexSet vertices_vertexSet dest: wellformed')
+
+lemma removeEdge_removes: "(s,t) \<notin> edgeSet (removeEdge s t g)"
+  by (metis (mono_tags, lifting) filterContext_edge_out_remove removeEdge.simps)
+
 
 end
