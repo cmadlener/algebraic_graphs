@@ -1,0 +1,119 @@
+\documentclass{article}
+
+\usepackage{graphicx}
+\usepackage{mathtools}
+\usepackage[hidelinks]{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage[
+backend=biber
+]{biblatex}
+\addbibresource{bibliography.bib}
+
+\title{Algebraic Graphs with Class}
+\author{
+  Christoph Madlener\\
+  \texttt{\href{mailto:madlener@in.tum.de}{madlener@in.tum.de}}
+}
+
+\begin{document}
+
+\maketitle
+\begin{abstract}
+  ~\cite{mokhov2017algebraic} 
+\end{abstract}
+
+\section{Introduction}
+\begin{itemize}
+\item graph representations (in maths, in Haskell/other programming languages)
+  \begin{itemize}
+  \item ``standard'' tuple $G=(V,E), E \subseteq V \times V$
+  \item containers~\cite{king1995dfs}, fgl~\cite{erwig2001inductive} (state of the art Haskell libraries)
+  \end{itemize}
+\item wellformedness (\textrightarrow{} implicit/explicit vertex set (?),
+  partial functions)
+\item introduce datatype (?)
+\item sound and complete representation for graphs
+\item overview
+\end{itemize}
+
+\section{Type class/locale}
+\subsection{The Core}
+\begin{itemize}
+\item graph construction primitives
+\item abstract from datatype \textrightarrow{} type class
+\item fundamental functions (vertex, edge, etc.)
+\end{itemize}
+\subsection{Algebraic Structure}
+\begin{itemize}
+\item axioms (for digraphs)
+\item subgraph - partial ordering
+\item axioms for undirected graphs, other classes
+\item instances in Haskell (directed, undirected, etc. via Eq instance)
+\end{itemize}
+\subsection{Graph Transformation Library}
+\begin{itemize}
+\item graph families (path, circuit, etc.)
+\item transpose
+\item functor
+\item monad
+\item removing edges
+\end{itemize}
+\subsection{Verification}
+\begin{itemize}
+\item equational reasoning
+\item reasoning in Isabelle/HOL \textrightarrow{} locale
+  \begin{itemize}
+  \item ``advanced'' graph concepts (walks, reachability, SCCs, etc.)
+    \begin{itemize}
+    \item more experimentation needed for actual feasibility (additional axioms required
+      for e.g.\ $Vertex\ u \neq \epsilon$?)
+    \item first impression: similar as with other representations; abstraction
+      to more advanced concepts quickly hides representation
+    \end{itemize}
+  \item ``polymorphic'' lemmas
+  \item compare to Kruskal AFP entry~\cite{Kruskal-AFP} (possibility to get algorithms for
+    any graph representation which can instantiate locale)
+  \item instantiation with pair\_digraph~\cite{GraphTheory-AFP} - soundness and
+    completeness proof
+  \end{itemize}
+\end{itemize}
+
+\section{Deep Embedding}
+\begin{itemize}
+\item compact representation
+\item compare to different concrete/executable representations wrt.\ efficiency
+  in time and space 
+  \begin{itemize}
+  \item sparse graphs (edge list)
+  \item adjacency map
+  \end{itemize}
+\item performance (\href{https://github.com/haskell-perf/graphs}{haskell-perf})
+\item reasoning in Isabelle/HOL \textrightarrow{} induction is great
+\item algorithms directly on deep embedding? \textrightarrow{} future work/open
+  question (Haskell implementation converts to adjacency map for algorithms)
+\end{itemize}
+\subsection{Quotient Type}
+\begin{itemize}
+\item deep embedding which satisfies axioms
+\item additional lemmas
+\item minimization~\cite{mcconnell2005linear}
+  \begin{itemize}
+  \item interesting for quotient type, disconnect from Noschinski/any other
+    representation for equality, same applies in Haskell for Eq instance)
+    \item interesting for algorithms (assuming we can exploit compact
+      representation)
+    \end{itemize}
+\end{itemize}
+
+\section{Conclusion}
+\begin{itemize}
+\item summarize findings
+\item restate open questions, future work
+\item labeled graphs (outlook)
+\item related work: other algebraic approaches (semiring on
+  matrices~\cite{dolan2013fun}, relational
+  algebra~\cite{berghammer2020relational})
+\item usage examples~\cite{mokhov2019language,beaumont2017high}
+\end{itemize}
+\printbibliography
+\end{document}
