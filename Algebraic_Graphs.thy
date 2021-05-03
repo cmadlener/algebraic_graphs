@@ -600,8 +600,8 @@ lemma
 subsubsection \<open>\<^term>\<open>filterContext\<close> and \<^term>\<open>removeEdge\<close>\<close>
 lemma filterContext_vertexSet: "vertexSet (filterContext u i out g) = vertexSet g"
   by (auto split: option.split
-              simp: focus_ok_iff Let_def induce_vertexSet transpose_vertexSet vertices_vertexSet
-                    focus_ins focus_outs dest: wellformed')
+           simp: focus_ok_iff Let_def induce_vertexSet transpose_vertexSet vertices_vertexSet
+                 focus_ins focus_outs dest: wellformed')
 
 lemma filterContext_edge_out:
   assumes "(u,v) \<in> edgeSet g" "out v"
@@ -616,27 +616,27 @@ lemma filterContext_egde_in:
   shows "(v,u) \<in> edgeSet (filterContext u i out g)"
   using assms
   by (auto split: option.split
-              simp: focus_ok_iff Let_def induce_edgeSet transpose_edgeSet vertices_edgeSet
-                    transpose_vertexSet vertices_vertexSet focus_ins)
+           simp: focus_ok_iff Let_def induce_edgeSet transpose_edgeSet vertices_edgeSet
+                 transpose_vertexSet vertices_vertexSet focus_ins)
 
 lemma filterContext_edge_out_remove:
   assumes "\<not>out v" "v \<noteq> u \<or> \<not>i u" \<comment> \<open>If \<^term>\<open>u = v\<close> we need to distinguish the case where the edge can be kept as incoming edge.\<close>
   shows "(u,v) \<notin> edgeSet (filterContext u i out g)"
   using assms
   by (auto split: option.split
-              simp: focus_ok_iff Let_def induce_edgeSet transpose_edgeSet vertices_edgeSet
-                    transpose_vertexSet vertices_vertexSet  dest: wellformed')
+           simp: focus_ok_iff Let_def induce_edgeSet transpose_edgeSet vertices_edgeSet
+                 transpose_vertexSet vertices_vertexSet  dest: wellformed')
 
 lemma filterContext_edge_in_remove:
   assumes "\<not>i v" "v \<noteq> u \<or> \<not>out u"
   shows "(v,u) \<notin> edgeSet (filterContext u i out g)"
   using assms
   by (auto split: option.split
-              simp: focus_ok_iff Let_def induce_edgeSet transpose_edgeSet vertices_edgeSet
-                    transpose_vertexSet vertices_vertexSet dest: wellformed')
+           simp: focus_ok_iff Let_def induce_edgeSet transpose_edgeSet vertices_edgeSet
+                 transpose_vertexSet vertices_vertexSet dest: wellformed')
 
 lemma removeEdge_removes: "(s,t) \<notin> edgeSet (removeEdge s t g)"
-  by (metis (mono_tags, lifting) filterContext_edge_out_remove removeEdge.simps)
-
+  unfolding removeEdge.simps
+  by (intro filterContext_edge_out_remove) blast+
 
 end
