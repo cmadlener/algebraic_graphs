@@ -12,7 +12,6 @@ lift_definition AOverlay :: "'v algebraic_graph \<Rightarrow> 'v algebraic_graph
 lift_definition AConnect :: "'v algebraic_graph \<Rightarrow> 'v algebraic_graph \<Rightarrow> 'v algebraic_graph" (infixl \<open>\<rightarrow>\<close> 80) is Connect
   by (simp add: algebraic_pair_digraph.algebraic_graph_eq_def)
 
-
 interpretation algebraic_digraph_deep_embedding: algebraic_digraph AEmpty AVertex AOverlay AConnect
 proof
   show "\<And>x y. AOverlay x y = AOverlay y x"
@@ -166,4 +165,19 @@ lemma isEmpty_iff: "AisEmpty g \<longleftrightarrow> g = \<epsilon>"
 
 lemma simplify_eq: "Asimplify g = g"
   by (metis (mono_tags, hide_lams) Asimplify.abs_eq Quotient3_algebraic_graph Quotient3_rel_rep algebraic_graph_eq_iff rep_abs_rsp simplify_edgeSet simplify_vertexSet)
+
+
+function vertex_set :: "'a algebraic_graph \<Rightarrow> 'a set" where
+  "vertex_set g = (
+    if g = AEmpty then {}
+    else if (\<exists>u. g = (AVertex u)) then {u. g = AVertex u}
+    else if (\<exists>x y. g = x \<oplus> y) then \<Union>{vertex_set x \<union> vertex_set y |x y. g = x \<oplus> y}
+    else \<Union>{vertex_set x \<union> vertex_set y |x y. g = x \<rightarrow> y}
+  )"
+  by auto
+
+lift_definition Avertex_set :: "'a algebraic_graph \<Rightarrow> 'a set" is vertexSet
+  by (auto simp flip: algebraic_graph_eq_iff)
+
+
 end
