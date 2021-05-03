@@ -39,7 +39,7 @@ fun circuit :: "'v list \<Rightarrow> 'g" where
   "circuit (x#xs) = path (x#xs @ [x])"
 
 fun star :: "'v \<Rightarrow> 'v list \<Rightarrow> 'g" where
-  "star x ys = connect (vertex x) (vertices ys)"
+  "star x ys = vertex x \<rightarrow> vertices ys"
 
 definition has_vertex :: "'g \<Rightarrow> 'v \<Rightarrow> bool" where 
   "has_vertex g u \<equiv> vertex u \<sqsubseteq> g"
@@ -80,6 +80,10 @@ definition is_vertex :: "'g \<Rightarrow> 'v \<Rightarrow> bool" where
 lemma is_vertexI[intro]: "has_vertex g u \<Longrightarrow> g \<sqsubseteq> vertex u \<Longrightarrow> is_vertex g u"
   unfolding is_vertex_def by auto
 
+definition reachable_trancl where
+  "reachable_trancl g u v \<equiv> (u = v \<and> u \<in> vertex_set g) \<or> (u,v) \<in> trancl (edge_set g)"
+
+
 
 subsubsection \<open>Vertex Walks\<close>
 inductive vwalk where
@@ -89,6 +93,8 @@ inductive vwalk where
 
 definition "vwalk_bet g u p v \<equiv> vwalk g p \<and> p \<noteq> [] \<and> hd p = u \<and> last p = v"
 
+definition reachable_vwalk_bet where
+  "reachable_vwalk_bet g u v \<equiv> (u = v \<and> u \<in> vertex_set g) \<or> (\<exists>w. vwalk_bet g u w v)"
 
 lemma vwalk_has_edge: "vwalk_bet g u w v \<Longrightarrow> u \<noteq> v \<Longrightarrow> \<exists>v'. has_edge g u v'"
   by (cases w)
@@ -151,6 +157,43 @@ lemma vwalk_append_edge: "vwalk g (w1 @ w2) \<Longrightarrow> w1 \<noteq> [] \<L
   by (induction w1)
      (auto elim: vwalk.cases)
 
+lemma tl_vwalk_is_vwalk: "vwalk E p \<Longrightarrow> vwalk E (tl p)"
+  by (induction p rule: vwalk.induct; simp)
+
+lemma vwalk_concat:
+  assumes "vwalk E p" "vwalk E q" "q \<noteq> []" "p \<noteq> [] \<Longrightarrow> last p = hd q"
+  shows "vwalk E (p @ tl q)"
+  using assms
+  by (induction) (simp_all add: tl_vwalk_is_vwalk)
+
+lemma vwalk_bet_join:
+  assumes "vwalk_bet g u w v" "vwalk_bet g v w' s"
+  shows "vwalk_bet g u (w @ tl w') s"
+  using assms
+  unfolding vwalk_bet_def
+  by (auto simp: vwalk_concat)
+     (metis append_butlast_last_id hd_Cons_tl last_append last_tl)
+        
+lemma reachable_trancl_trans:
+  assumes "reachable_trancl g u v" "reachable_trancl g v s"
+  shows "reachable_trancl g u s"          
+  using assms
+  unfolding reachable_trancl_def
+  by (auto dest: trancl_trans)
+
+lemma reachable_vwalk_bet_trans:
+  assumes "reachable_vwalk_bet g u v" "reachable_vwalk_bet g v s"
+  shows "reachable_vwalk_bet g u s"
+  using assms
+  unfolding reachable_vwalk_bet_def
+  by (auto dest: vwalk_bet_join)
+
+lemma reachable_defs_eq:
+  "reachable_trancl g u v \<longleftrightarrow> reachable_vwalk_bet g u v"
+  unfolding reachable_trancl_def reachable_vwalk_bet_def vwalk_bet_def
+  apply auto
+  sorry
+
 end
 no_notation Empty (\<open>\<epsilon>\<close>)
 no_notation Overlay (infixl \<open>\<oplus>\<close> 75)
@@ -160,7 +203,7 @@ subsection \<open>Directed graphs\<close>
 locale algebraic_digraph = algebraic_pre_graph + 
 assumes overlay_comm: "x \<oplus> y = y \<oplus> x"
   and overlay_assoc: "x \<oplus> (y \<oplus> z) = (x \<oplus> y) \<oplus>  z"
-  and connect_monoid[simp]: "monoid connect \<epsilon>"
+  and connect_monoid[simp]: "monoid (\<rightarrow>) \<epsilon>"
   and connect_distr_overlay_l: "x \<rightarrow> (y \<oplus> z) = x \<rightarrow> y \<oplus> x \<rightarrow> z"
   and connect_distr_overlay_r: "(x \<oplus> y) \<rightarrow> z = x \<rightarrow> z \<oplus> y \<rightarrow> z"
   and decomp: "x \<rightarrow> y \<rightarrow> z = x \<rightarrow> y \<oplus> x \<rightarrow> z \<oplus> y \<rightarrow> z"
@@ -259,7 +302,7 @@ lemma subgraph_overlay: "x \<sqsubseteq> (x \<oplus> y)"
 
 lemma subgraph_overlay_connect: "x \<oplus> y \<sqsubseteq> x \<rightarrow> y"
   by (auto intro!: subgraphI)
-     (metis left_absorption overlay_assoc right_absorption)  sledgehammer
+     (metis left_absorption overlay_assoc right_absorption)
 
 lemma subgraph_connectD:
   assumes "x \<rightarrow> y \<sqsubseteq> g"
@@ -280,6 +323,20 @@ lemma subgraph_monotonicity:
 lemma vertices_subgraph_clique: "vertices xs \<sqsubseteq> clique xs"
   by (induction xs)
      (auto intro: subgraphI simp: subgraph_def, metis left_absorption overlay_assoc right_absorption)
+
+lemma vertices_has_vertex: "u \<in> set xs \<Longrightarrow> has_vertex (vertices xs) u"
+  apply (induction xs)
+   apply (auto simp: has_vertex_def subgraph_overlay)
+  by (metis overlay_assoc overlay_comm subgraph_def)
+
+lemma vertices_no_edge: "\<not>has_edge (vertices xs) u v"
+  apply (induction xs)
+   apply (auto simp: has_edge_def)
+  oops
+
+lemma vertices_vertex_set: "set xs \<subseteq> vertex_set (vertices xs)"
+  unfolding vertex_set_def
+  using vertices_has_vertex by blast
 
 
 lemma subgraph_mono_vertex: "h \<sqsubseteq> g \<Longrightarrow> has_vertex h u \<Longrightarrow> has_vertex g u"
