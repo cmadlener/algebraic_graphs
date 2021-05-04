@@ -8,3 +8,4 @@ paper/auto
 *.out
 *.run.xml
 *.synctex.gz
+paper/_minted*
