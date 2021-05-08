@@ -51,7 +51,12 @@ backend=biber
 
 \maketitle
 \begin{abstract}
-  \cite{mokhov2017algebraic} 
+  We give an overview of algebraic graphs as introduced by
+  Mokhov~\cite{mokhov2017algebraic}. Algebraic graphs have a small and safe core
+  of construction primitives, alongside a set of axioms, characterizing an
+  algebra of graphs. They can be used to elegantly implement a graph
+  transformation library employing functional programming. We also review the
+  suitability of algebraic graphs for formal verification using Isabelle/HOL.
 \end{abstract}
 
 \section{Introduction}\label{sec:intro}
@@ -266,7 +271,7 @@ to the following minimal set of axioms characterizing directed graphs:
 \end{figure*}
 One can easily check that the definitions of the primitives given
 in~\autoref{sec:core} satisfy these axioms. At this point let us consider the
-completeness algebraic graphs. For any graph $G=(V,E)$ the following function
+completeness of algebraic graphs. For any graph $G=(V,E)$ the following function
 builds it using the four construction primitives:
 \begin{minted}{haskell}
   graph :: Graph g => [Vertex g] -> [(Vertex g, Vertex g)] -> g
@@ -283,7 +288,7 @@ Mokhov also follows a standard approach of defining a partial order $(\preceq)$ 
 idempotent overlay operation as $x \preceq y \iff x \overlay y = y$. This is indeed
 a partial order under the graph axioms (i.e.\ it is reflexive, antisymmetric and
 transitive). In fact this partial order can actually be used as a definition for
-the subgraph relation:
+the subgraph relation, denoted by $\subseteq$:
 \[
   x \subseteq y \coloneqq x \preceq y \iff x \overlay y = y
 \]
@@ -293,7 +298,7 @@ obtained from the same construction primitives as directed graphs. It suffices
 to modify the underlying axioms. In the case of undirected graphs this can be
 achieved by making connect commutative (then denoted by $\leftrightarrow$),
 i.e.\ $x \leftrightarrow y = y \leftrightarrow x$. By introducing this axiom we
-can prove some of the axioms of directed graphs. So undirected graphs are
+can prove some of the axioms of directed graphs. Hence, undirected graphs are
 characterized by the following minimal set of axioms:
 \begin{itemize}
 \item $(\mathcal{G}, \oplus)$ is a commutative semigroup
@@ -327,15 +332,15 @@ define a \hs{Graph} instance for that datatype, while realizing that more
 generally it can be used to represent relations on some domain (hence the renaming
 to \hs{Relation}).
 \begin{minted}{haskell}
-data Relation a = R { domain :: Set a, relation :: Set (a, a)} deriving Eq
+  data Relation a = R { domain :: Set a, relation :: Set (a, a)} deriving Eq
 
-instance Ord a => Graph (Relation a) where
-  type Vertex (Relation a) = a
-  empty       = R Set.empty Set.empty
-  vertex  x   = R (singleton x) Set.empty
-  overlay x y = R (domain x `union` domain y) (relation x `union` relation y)
-  connect x y = R (domain x `union` domain y) (relation x `union` relation y `union'
-    fromAscList [ (a, b) | a <- elems (domain x), b <- elems (domain y) ])
+  instance Ord a => Graph (Relation a) where
+    type Vertex (Relation a) = a
+    empty       = R Set.empty Set.empty
+    vertex  x   = R (singleton x) Set.empty
+    overlay x y = R (domain x `union` domain y) (relation x `union` relation y)
+    connect x y = R (domain x `union` domain y) (relation x `union` relation y `union'
+      fromAscList [ (a, b) | a <- elems (domain x), b <- elems (domain y) ])
 \end{minted}
 Mokhov also defines a \hs{Num} instance for \hs{Relation} which enables the use
 of \hs{+} and \hs{*} as shortcuts for \hs{overlay} resp.\ \hs{connect}.
@@ -347,10 +352,10 @@ also straightforward: One can simply wrap \hs{Relation} in a \hs{newtype} and
 define a custom \hs{Eq} instance. An example for undirected graphs (in this case
 think of symmetric directed graphs) is given.
 \begin{minted}{haskell}
-newtype Symmetric a = S (Relation a) deriving (Graph, Num)
+  newtype Symmetric a = S (Relation a) deriving (Graph, Num)
 
-instance Ord a => Eq (Symmetric a) where
-  S x == S y = symmetricClosure x == symmetricClosure y
+  instance Ord a => Eq (Symmetric a) where
+    S x == S y = symmetricClosure x == symmetricClosure y
 \end{minted}
 It is also sensible to introduce subclasses like \hs{class Graph g => UndirectedGraph g}
 to reflect the class of graph we are working with in the type system, and thus,
@@ -361,14 +366,14 @@ constructions and transformations made possible with the core type class. Simple
 examples include constructing a \textit{path} from a list of vertices, which
 then can be easily extended to a \textit{circuit}:
 \begin{minted}{haskell}
-path :: Graph g => [Vertex g] -> g
-path []  = empty
-path [x] = vertex x
-path xs = edges $ zip xs (tail xs)
-%$
-circuit :: Graph g => [Vertex g] -> g
-circuit [] = empty
-circuit xs = path (xs ++ [head xs])
+  path :: Graph g => [Vertex g] -> g
+  path []  = empty
+  path [x] = vertex x
+  path xs = edges $ zip xs (tail xs)
+
+  circuit :: Graph g => [Vertex g] -> g
+  circuit [] = empty
+  circuit xs = path (xs ++ [head xs])
 \end{minted}
 Mokhov also gives functions for constructing \textit{star} graphs (i.e.\ a
 center vertex connected to a set of leaves) and for building graphs from
@@ -377,14 +382,14 @@ center vertex connected to a set of leaves) and for building graphs from
 More interesting applications include the implementation of a zero time
 graph transposition using a \hs{newtype} wrapper~\cite{mokhov2017algebraic}:
 \begin{minted}{haskell}
-newtype Transpose g = T { transpose :: g } deriving Eq
+  newtype Transpose g = T { transpose :: g } deriving Eq
 
-instance Graph g => Graph (Transpose g) where
-  type Vertex (Transpose g) = Vertex g
-  empty       = T empty
-  vertex      = T . vertex
-  overlay x y = T $ overlay (transpose x) (transpose y)
-  connect x y = T $ connect (transpose y) (transpose x)
+  instance Graph g => Graph (Transpose g) where
+    type Vertex (Transpose g) = Vertex g
+    empty       = T empty
+    vertex      = T . vertex
+    overlay x y = T $ overlay (transpose x) (transpose y)
+    connect x y = T $ connect (transpose y) (transpose x)
 \end{minted}
 Although for certain representations it is possible to get an $\mathcal{O}(1)$
 transpose operation (e.g.\ by setting a transposed flag), for many typical
@@ -396,53 +401,53 @@ More sophisticated transformations can be implemented using the following
 \hs{a -> b} and a graph with vertices of type \hs{a} and produces a graph with
 vertices of type \hs{b} polymorphically.
 \begin{minted}{haskell}
-newtype GraphFunctor a = F { gfor :: forall g. Graph g => (a -> Vertex g) -> g }
+  newtype GraphFunctor a = F { gfor :: forall g. Graph g => (a -> Vertex g) -> g }
 
-instance Graph (GraphFunctor a) where
-  type Vertex (GraphFunctor a) = a
-  empty       = F $ \_ -> empty
-  vertex  x   = F $ \f -> vertex (f x)
-  overlay x y = F $ \f -> overlay (gmap f x) (gmap f y)
-  connect x y = F $ \f -> connect (gmap f x) (gmap f y)
+  instance Graph (GraphFunctor a) where
+    type Vertex (GraphFunctor a) = a
+    empty       = F $ \_ -> empty
+    vertex  x   = F $ \f -> vertex (f x)
+    overlay x y = F $ \f -> overlay (gmap f x) (gmap f y)
+    connect x y = F $ \f -> connect (gmap f x) (gmap f y)
 
-gmap :: Graph g => (a -> Vertex g) -> GraphFunctor a -> g
-gmap = flip gfor  
+  gmap :: Graph g => (a -> Vertex g) -> GraphFunctor a -> g
+  gmap = flip gfor  
 \end{minted}
 Interestingly this can be used to merge vertices fulfilling some predicate
 \hs{p} by mapping them to a single vertex:
 \begin{minted}{haskell}
-mergeVertices :: Graph g => (Vertex g -> Bool)
-  -> Vertex g -> GraphFunctor (Vertex g) -> g
-mergeVertices p v = gmap $ \u -> if p u then v else u
+  mergeVertices :: Graph g => (Vertex g -> Bool)
+    -> Vertex g -> GraphFunctor (Vertex g) -> g
+  mergeVertices p v = gmap $ \u -> if p u then v else u
 \end{minted}
 In the original paper \hs{gmap} is then used further to construct rather
 sophisticated graphs fully polymorphically~\cite{mokhov2017algebraic}.
 
 Mokhov also goes on to introduce a \hs{Monad}-like \hs{newtype} wrapper. The
 \hs{bind} in the context of graphs allows to replace each vertex with a
-(possibly) empty subgraph. This can be used to both remove and split vertices.
+(possibly empty) subgraph. This can be used to both remove and split vertices.
 \begin{minted}{haskell}
-newtype GraphMonad a = M { bind :: forall g. Graph g => (a -> g) -> g }
+  newtype GraphMonad a = M { bind :: forall g. Graph g => (a -> g) -> g }
 
-instance Graph (GraphMonad a) where
-  type Vertex (GraphMonad a) = a
-  empty       = M $ \_ -> empty
-  vertex x    = M $ \f -> f x
-  overlay x y = M $ \f -> overlay (bind x f) (bind y f)
-  connect x y = M $ \f -> connect (bind x f) (bind y f)
+  instance Graph (GraphMonad a) where
+    type Vertex (GraphMonad a) = a
+    empty       = M $ \_ -> empty
+    vertex x    = M $ \f -> f x
+    overlay x y = M $ \f -> overlay (bind x f) (bind y f)
+    connect x y = M $ \f -> connect (bind x f) (bind y f)
 \end{minted}
 Removing a vertex with \hs{bind} can be generalized to a function \hs{induce},
 which only keeps vertices satisfying some predicate \hs{p}.
 \begin{minted}{haskell}
-induce :: Graph g => (Vertex g -> Bool) -> GraphMonad (Vertex g) -> g
-induce p g = bind g $ \v -> if p v then vertex v else empty
+  induce :: Graph g => (Vertex g -> Bool) -> GraphMonad (Vertex g) -> g
+  induce p g = bind g $ \v -> if p v then vertex v else empty
 \end{minted}
 Splitting a vertex works by replacing that vertex with a graph containing the
 desired vertices.
 \begin{minted}{haskell}
-splitVertex :: (Graph g, Eq (Vertex g)) => Vertex g -> [Vertex g] 
-  -> GraphMonad (Vertex g) -> g
-splitVertex v vs g = bind g $ \u -> if u == v then vertices vs else vertex u
+  splitVertex :: (Graph g, Eq (Vertex g)) => Vertex g -> [Vertex g] 
+    -> GraphMonad (Vertex g) -> g
+  splitVertex v vs g = bind g $ \u -> if u == v then vertices vs else vertex u
 \end{minted}
 Mokhov then defines yet another \hs{newtype} wrapper utilizing \hs{bind} to
 remove edges. He also showcases the construction capabilities of the presented
@@ -495,14 +500,14 @@ First impressions suggest that it is feasible to base more sophisticated
 formalizations of graph theory on algebraic graphs. Although we suspect that
 some additional axiom(s) may be required to make for \textit{interesting} graph
 theory; as it stands the statement $\eps \neq \hs{vertex u}$ for a $u \in
-\mathbb{V}$. This is further illustrated by the fact that we can instantiate the
-algebraic graph locale with the unit type.
+\mathbb{V}$ is unprovable. This is further illustrated by the fact that we can
+instantiate the algebraic graph locale with the unit type.
 
 This is an interesting direction for future work for a related reason that the
-type class is interesting in Haskell: The type class is the basis for 
-polymorphic graph transformation library, whereas the locale can be
-seen as a \textit{polymorphic} graph formalization library, as any lemma we can prove
-using the locale axioms become available to a graph representation
+type class is interesting in Haskell: The type class forms the basis for 
+a polymorphic graph transformation library, whereas the locale can be
+seen as a \textit{polymorphic} graph formalization library. Any lemma we can prove
+using the locale axioms becomes available to any graph representation
 instantiating it. This obviously becomes more interesting the more material is
 available in the locale. Haslbeck et al.\ chose a similar approach to implement
 and verify Kruskal's algorithm independent of the concrete graph
@@ -511,28 +516,28 @@ representation~\cite{Kruskal-AFP}.
 \section{Deep Embedding}\label{sec:deep}
 Up until this point we were mainly concerned with exploiting the algebraic
 structure of graphs for polymorphic graph constructions and transformations, and
-for formal verification. It turns out, however, that the deep embedding of the
+for formal verification. However, that the deep embedding of the
 construction primitives in a datatype is interesting in itself. Recall the
 definition from the introduction:
 \begin{minted}{haskell}
-data Graph a = Empty
-             | Vertex a
-             | Overlay (Graph a) (Graph a)
-             | Connect (Graph a) (Graph a)
+  data Graph a = Empty
+               | Vertex a
+               | Overlay (Graph a) (Graph a)
+               | Connect (Graph a) (Graph a)
 \end{minted}
 An instance for the type class can be defined easily, however, we cannot use the
 derived \hs{Eq} instance for the datatype, as it would violate the graph axioms.
-One solution is to fold the datatype into a concrete graph representation to
+One solution is to fold the deep embedding into a concrete graph representation to
 obtain a law-abiding \hs{Eq} instance:
 \begin{minted}{haskell}
-fold :: Graph g => Graph (Vertex g) -> g
-fold Empty         = empty
-fold (Vertex  x  ) = vertex x
-fold (Overlay x y) = overlay (fold x) (fold y)
-fold (Connect x y) = connect (fold x) (fold y)
+  fold :: Graph g => Graph (Vertex g) -> g
+  fold Empty         = empty
+  fold (Vertex  x  ) = vertex x
+  fold (Overlay x y) = overlay (fold x) (fold y)
+  fold (Connect x y) = connect (fold x) (fold y)
 
-instance Ord a => Eq (Graph a) where
-  x == y = fold x == (fold y :: Relation a)
+  instance Ord a => Eq (Graph a) where
+    x == y = fold x == (fold y :: Relation a)
 \end{minted}
 This approach is also currently implemented in the library available on
 \texttt{hackage}. However, this is not ideal for multiple reasons. Coupling the
@@ -541,42 +546,87 @@ inconvenient at best. More interestingly algebraic graphs can compactly
 represent dense graphs. Consider the graph \hs{clique [1..n]}, which is linear
 in size in the deep embedding, while it is quadratic when stored as a
 \hs{Relation}. Requiring to fully expand graphs to check equality voids this
-advantage.
-\begin{itemize}
-\item compact representation
-\item compare to different concrete/executable representations wrt.\ efficiency
-  in time and space 
-  \begin{itemize}
-  \item sparse graphs (edge list)
-  \item adjacency map
-  \end{itemize}
-\item performance (\href{https://github.com/haskell-perf/graphs}{haskell-perf})
-\item reasoning in Isabelle/HOL \textrightarrow{} induction is great
-\item algorithms directly on deep embedding? \textrightarrow{} future work/open
-  question (Haskell implementation converts to adjacency map for algorithms)
-\end{itemize}
-\subsection{Quotient Type}\label{sec:quotient}
-\begin{itemize}
-\item deep embedding which satisfies axioms
-\item additional lemmas
-\item minimization~\cite{mcconnell2005linear}
-  \begin{itemize}
-  \item interesting for quotient type, disconnect from Noschinski/any other
-    representation for equality, same applies in Haskell for Eq instance)
-    \item interesting for algorithms (assuming we can exploit compact
-      representation)
-    \end{itemize}
-\end{itemize}
+advantage. A promising approach to alleviate this issue is the \textit{modular
+  graph decomposition}~\cite{mcconnell2005linear}, as it allows to minimize
+algebraic graph expressions. It remains an open question if this decomposition
+can be computed efficiently directly on the deep embedding.
+
+More interesting questions for future work come up in connection with the deep
+embedding. Currently only the transformations presented with the type class, i.e.\
+transpose, as well as anything that can be done using the corresponding versions
+of \hs{gmap} and \hs{bind}, are implemented directly on the deep embedding. No
+known efficient implementations of fundamental graph algorithms, like
+depth-first-search, that work directly on the deep embedding are
+known~\cite{mokhov2017algebraic}. The library therefore resorts to converting
+algebraic graph expressions to an adjacency map and uses algorithms
+for those.
+
+An immediate application which can be more efficient in space using
+algebraic graphs that comes to mind is search, however, only in best case
+examples, i.e.\ where only a small part of the graph has to be expanded. This is
+due to the fact that the neighborhood of a vertex in an algebraic graph
+expression can be computed in linear (in the size of the graph expression) time
+and space. We already saw that the algebraic graph representation can be
+significantly smaller than conventional representations.
+
+Some benchmarks were performed (on an earlier version of the library) to compare
+its performance to \texttt{containers} and \texttt{fgl} (and one other
+representation). The results are mixed; depending on the area of application,
+algebraic graphs may be competitive in performance, or in some cases, orders of
+magnitudes slower. For the full results refer to the benchmark suite
+repository\footnote{available at
+  \texttt{\href{https://github.com/haskell-perf/graphs}{https://github.com/haskell-perf/graphs}}}.
+\subsection{Verification}\label{sec:quotient}
+We were also interested in using the deep embedding in formal verification using
+Isabelle/HOL. Hence, we formalized most of the material from the library. This
+feat turned out nicely, as the inductive datatype definition of the deep
+embedding enables proofs by induction.
+
+In the Haskell implementation of the deep embedding we already saw that
+structural equality does not satisfy the axioms. There we can define a custom
+\hs{Eq} instance to obtain a law-abiding datatype. In Isabelle/HOL we can follow
+a similar approach, which results in a \texttt{quotient\_type}, which can be
+thought of as an equivalence class construction on the raw datatype. For the
+moment the equivalence is based on the tuple representation by Noschinski
+mentioned in~\autoref{sec:verification}. Again, the minimization of algebraic
+graph expressions for an equivalence relation on algebraic graphs, decoupled
+from any other graph representation, is desirable.
+
+The quotient type also allows us to formally prove that it satisfies the axioms,
+by instantiating the locale. It also paves the way for further formalization
+efforts on the deep embedding. However, this only becomes really interesting
+with more future work, i.e.\ if algorithms that work directly on the deep
+embedding or other advanced usages of it can be found (in other words, if there
+is more material to formalize).
 
 \section{Conclusion}\label{sec:conclusion}
-\begin{itemize}
-\item summarize findings
-\item restate open questions, future work
-\item labeled graphs (outlook)
-\item related work: other algebraic approaches (semiring on
-  matrices~\cite{dolan2013fun}, relational
-  algebra~\cite{berghammer2020relational})
-\item usage examples~\cite{mokhov2019language,beaumont2017high}
-\end{itemize}
+We saw a novel approach to representing graphs, which is especially suitable for
+functional programming. It allows for safe, polymorphic and elegant graph
+constructions and transformations. Algebraic graphs also lend themselves nicely
+to formal verification.
+
+The alert reader might have noticed that the given primitives can only be used
+to represent unlabeled graphs. Mokhov extended the algebraic graph library to
+also represent edge-labeled graphs. There is no published material on this yet
+(besides the source code), for more information refer to the talk by Mokhov
+during Haskell eXchange 2018\footnote{available at
+  \texttt{\href{https://skillsmatter.com/skillscasts/12361-labelled-algebraic-graphs}{https://skillsmatter.com/skillscasts/12361-labelled-algebraic-graphs}}}.
+
+Algebraic graphs as presented have been successfully used in practice, e.g.\ for
+asynchronous circuit design~\cite{beaumont2017high} and acceleration of graph
+processing using FPGAs~\cite{mokhov2019language}. These are examples for which
+the available transformations are sufficient. An important direction for future
+research is going beyond those (relatively simple) transformations. That means
+to find and formulate algorithms either inside the core type class or directly
+on the deep embedding. Berghammer et. al~\cite{berghammer2020relational}
+successfully employ algebraic approaches to formally verify graph algorithms.
+However, they are using an algebra of relations as opposed to the one here
+defined using graph construction primitives. Dolan~\cite{dolan2013fun} uses an
+algebra on adjacency matrices to find paths in graphs.
+Mokhov himself postulates that the algebraic approach allows to formulate graph
+algorithms as systems of equations with unknowns. This approach may also be a
+way to find novel graph algorithms.
+
 \printbibliography
+
 \end{document}
