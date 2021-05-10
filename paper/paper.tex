@@ -69,8 +69,8 @@ can be illustrated by trying to directly translate this to Haskell:
 \begin{minted}{haskell}
   data G a = G { vertices :: Set a, edges :: Set (a,a)}
 \end{minted}
-The value \hs{G {[1,2,3], [(1,2),(2,3)]}} then represents the graph $G =
-(\{1,2,3\}, \{(1,2),(2,3)\})$, however \hs{G {[1,2], [(2,3)]}} does not
+The value \hs{G [1,2,3] [(1,2),(2,3)]} then represents the graph $G =
+(\{1,2,3\}, \{(1,2),(2,3)\})$, however \hs{G [1,2] [(2,3)]} does not
 represent a consistent graph, as the edge refers to a non-existent node.
 The state-of-the-art \texttt{containers} library implements graphs with
 adjacency lists employing immutable arrays~\cite{king1995dfs}. The
@@ -105,9 +105,7 @@ we can exploit the algebraic structure in verification using Isabelle/HOL.
 
 In~\autoref{sec:deep} we will examine the deep embedding (i.e.\
 the datatype as opposed to the type class of the preceding sections) regarding
-applicability in practice and in verification. In~\autoref{sec:quotient} we
-define a quotient type in Isabelle/HOL which in essence is a deep embedding
-which satisfies the axioms.
+applicability in practice and in verification (\autoref{sec:quotient}). 
 
 In~\autoref{sec:conclusion} we conclude and give an outlook on possible future
 work and open questions connected to algebraic graphs as presented.
@@ -116,8 +114,8 @@ work and open questions connected to algebraic graphs as presented.
 This section will cover most parts of the original paper by
 Mokhov~\cite{mokhov2017algebraic}. The graph construction primitives of
 algebraic graphs will be formally defined and their soundness and completeness
-proven. Afterwards we will cover the algebraic structure inherent to these
-primitives. As part of this we will introduce a type class in Haskell which
+proven. Afterwards we will cover the algebraic structure exhibited by these
+primitives when interpreted as graphs. As part of this we will introduce a type class in Haskell which
 further abstracts from implementation details. We will also see that different
 classes of graphs can be obtained by extending the set of axioms. Instances of
 these different classes and a graph transformation library in Haskell are
@@ -128,14 +126,14 @@ class for formal verification in Isabelle/HOL.
 In the introduction we already briefly saw the four graph construction
 primitives. Let us first define the set of (consistent) graphs $\mathcal{G}$
 over a fixed universe of vertices $\mathbb{V}$. A graph $G \in \mathcal{G}$ can
-then be represented as a tuple $G=(V,E)$ where $V \subseteq \mathbb{V}$ and $E
+be represented as a tuple $G=(V,E)$ where $V \subseteq \mathbb{V}$ and $E
 \subseteq V \times V$.
 The four graph construction primitives
 then are defined as follows. The \textit{empty} graph, denoted $\eps$ is
 simply the tuple $(\emptyset, \emptyset)$ which is clearly consistent, hence
 $\eps \in \mathcal{G}$. Graphs with a single \textit{vertex} $v \in
 \mathbb{V}$ and no edges, i.e.\ $(\{v\}, \emptyset)$  denoted by just $v$, are also
-clearly consistent, hence $v \in \mathcal{G}$. The binary operations
+trivially consistent, hence $v \in \mathcal{G}$. The binary operations
 \textit{overlay} and \textit{connect}, denoted by $\overlay$ and $\connect$
 respectively, allow constructing larger graphs. Their definitions are
 \begin{align*}
@@ -143,7 +141,7 @@ respectively, allow constructing larger graphs. Their definitions are
   (V_1, E_1) \connect (V_2, E_2) &\coloneqq (V_1 \cup V_2, E_1 \cup E_2 \cup V_1 \times V_2)
 \end{align*}
 So overlay is just the union of two graphs, while connect also adds an edge from
-each vertex of the ``left'' graph to each vertex of the ``right'' graph. It is
+each vertex of its first argument to each vertex of its second argument. It is
 straightforward to see that if $G_1 \in \mathcal{G}$ and $G_2 \in \mathcal{G}$
 then also $G_1 \overlay G_2 \in \mathcal{G}$ and $G_1 \connect G_2 \in
 \mathcal{G}$. In combination with the consistency of $\eps$ and of single vertex
@@ -151,7 +149,7 @@ graphs this already proves that algebraic graphs are a consistent
 representation for graphs. The completeness of this representation, i.e.\ for
 each $G \in \mathcal{G}$ there is an algebraic graph expression representing it,
 is shown in the next subsection. Both of these facts were also formally proven in
-Isabelle/HOL as part of~\autoref{sec:verification}.
+Isabelle/HOL (see~\autoref{sec:verification}).
 
 As we will shortly see in~\autoref{sec:algebra} overlay and connect are somewhat
 related to addition and multiplication, hence, we give connect a higher precedence
@@ -160,7 +158,7 @@ primitives. They are illustrated in~\autoref{fig:construction}.
 \begin{enumerate}[label=(\alph*)]
 \item $1 \overlay 2 = (\{1,2\}, \emptyset)$
 \item $1 \connect 2 = (\{1,2\}, \{(1,2)\})$
-\item $1 \connect 2 \overlay 3 = (\{1,2,3\}, \{(1,2), (1,3)\})$
+\item $1 \connect (2 \overlay 3) = (\{1,2,3\}, \{(1,2), (1,3)\})$
 \item $1 \connect 2 \overlay 2 \connect 3 = (\{1,2,3\}, \{(1,2), (2,3)\})$
 \end{enumerate}
 \begin{figure*}
@@ -233,7 +231,7 @@ Before turning to more advanced graph constructions we will observe the
 algebraic structure of the primitives. It turns out that overlay and connect
 almost form a semiring over graphs:
 \begin{itemize}
-\item $(\mathcal{G}, \overlay, \eps)$ is an idempotent commutative monoid
+\item $(\mathcal{G}, \overlay, \eps)$ is an idempotent, commutative monoid
 \item $(\mathcal{G}, \connect, \eps)$ is a monoid
 \item $\connect$ distributes over $\overlay$
 \end{itemize}
@@ -263,8 +261,8 @@ to the following minimal set of axioms characterizing directed graphs:
   \hspace{12mm}
   \begin{subfigure}[b]{0.5\linewidth}
     \centerline{\includegraphics[scale=0.24]{fig/ax-decomposition.pdf}}
-    \caption{Decomposition: $1 \connect 2 \connect 3 = {1 \connect 2} \overlay
-      1 \connect 3 \overlay 2 \connect 3$}
+    \caption{Decomposition: $1 \connect 2 \connect 3 = 1 \connect 2 \overlay
+      {1 \connect 3} \overlay {2 \connect 3}$}
   \end{subfigure}
   \vspace{-1mm}
   \caption{Two axioms of the algebra of graphs. Illustrations from~\cite{mokhov2017algebraic}.\label{fig:axioms}}
@@ -282,7 +280,15 @@ The \hs{edges} function generalizes \hs{edge} to a list of edges:
   edges :: Graph g => [(Vertex g, Vertex g)] -> g
   edges = foldr overlay empty . map (uncurry edge)
 \end{minted}
-This was also formally proven in Isabelle/HOL (see~\autoref{sec:verification}).
+They are a direct translation of the fact, that any algebraic graph expression
+$g$ for a graph $G=(V,E) \in \mathcal{G}$ can be rewritten in the 
+\textit{canonical form}:
+\[
+  g = \left( \bigoplus_{v \in V} v \right) \oplus \left( \bigoplus_{(u,v) \in E}
+  u \connect v \right)
+\]
+The completeness of algebraic graphs was also formally proven in Isabelle/HOL
+(see~\autoref{sec:verification}).
 
 Mokhov also follows a standard approach of defining a partial order $(\preceq)$ for the
 idempotent overlay operation as $x \preceq y \iff x \overlay y = y$. This is indeed
@@ -294,12 +300,13 @@ the subgraph relation, denoted by $\subseteq$:
 \]
 
 So far we only considered directed graphs. Undirected graphs can be
-obtained from the same construction primitives as directed graphs. It suffices
+obtained from the very same construction primitives as directed graphs. It suffices
 to modify the underlying axioms. In the case of undirected graphs this can be
 achieved by making connect commutative (then denoted by $\leftrightarrow$),
-i.e.\ $x \leftrightarrow y = y \leftrightarrow x$. By introducing this axiom we
-can prove some of the axioms of directed graphs. Hence, undirected graphs are
-characterized by the following minimal set of axioms:
+i.e.\ adding the axiom $x \leftrightarrow y = y \leftrightarrow x$. By
+introducing this axiom we can prove some of the other axioms of directed graphs.
+Hence, undirected graphs are characterized by the following minimal set of
+axioms:
 \begin{itemize}
 \item $(\mathcal{G}, \oplus)$ is a commutative semigroup
 \item $\leftrightarrow$ is commutative and has $\eps$ as the identity
@@ -321,11 +328,11 @@ core of construction primitives. Pairing these primitives with suitable sets of
 axioms leads to a highly flexible representation for graphs.
 
 \subsection{Graph Transformation Library}\label{sec:trafo}
-Based on this core type class, Mokhov implements what he refers to as a graph
+Based on the core type class, Mokhov implements what he refers to as a graph
 transformation library\footnote{Algebraic graphs on hackage:
   \texttt{\href{http://hackage.haskell.org/package/algebraic-graphs}{http://hackage.haskell.org/package/algebraic-graphs}}}.
 In order to understand the following constructions and transformations better,
-we follow the approach of Mokhov and first define instances for the type class
+we follow his approach and first define instances for the type class
 \hs{Graph}. Recall the attempt from the introduction to directly translate the
 graph representation $G=(V,E)$ into the Haskell datatype \hs{G}. We will now
 define a \hs{Graph} instance for that datatype, while realizing that more
@@ -350,7 +357,7 @@ graphs, as was argued in~\autoref{sec:core}. Obtaining \hs{Graph} instances
 which satisfy the axioms for undirected graphs (or other classes of graphs) is
 also straightforward: One can simply wrap \hs{Relation} in a \hs{newtype} and
 define a custom \hs{Eq} instance. An example for undirected graphs (in this case
-think of symmetric directed graphs) is given.
+the connection to symmetric directed graphs is very prominent) is given.
 \begin{minted}{haskell}
   newtype Symmetric a = S (Relation a) deriving (Graph, Num)
 
@@ -380,7 +387,8 @@ center vertex connected to a set of leaves) and for building graphs from
 \hs{Tree}s and \hs{Forest}s from the \texttt{containers} library.
 
 More interesting applications include the implementation of a zero time
-graph transposition using a \hs{newtype} wrapper~\cite{mokhov2017algebraic}:
+graph transposition using yet another \hs{newtype}
+wrapper~\cite{mokhov2017algebraic}:
 \begin{minted}{haskell}
   newtype Transpose g = T { transpose :: g } deriving Eq
 
@@ -399,7 +407,7 @@ $\mathcal{O}(\abs{V} + \abs{E})$ time.
 More sophisticated transformations can be implemented using the following
 \hs{Functor}-like \hs{newtype} wrapper. The function \hs{gmap} takes a function
 \hs{a -> b} and a graph with vertices of type \hs{a} and produces a graph with
-vertices of type \hs{b} polymorphically.
+vertices of type \hs{b}.
 \begin{minted}{haskell}
   newtype GraphFunctor a = F { gfor :: forall g. Graph g => (a -> Vertex g) -> g }
 
@@ -424,7 +432,7 @@ In the original paper \hs{gmap} is then used further to construct rather
 sophisticated graphs fully polymorphically~\cite{mokhov2017algebraic}.
 
 Mokhov also goes on to introduce a \hs{Monad}-like \hs{newtype} wrapper. The
-\hs{bind} in the context of graphs allows to replace each vertex with a
+\hs{bind} function in the context of graphs allows to replace each vertex with a
 (possibly empty) subgraph. This can be used to both remove and split vertices.
 \begin{minted}{haskell}
   newtype GraphMonad a = M { bind :: forall g. Graph g => (a -> g) -> g }
@@ -452,14 +460,14 @@ desired vertices.
 Mokhov then defines yet another \hs{newtype} wrapper utilizing \hs{bind} to
 remove edges. He also showcases the construction capabilities of the presented
 library by constructing de Bruijn graphs (a rather sophisticated type of graph
-occurring frequently occurring in computer engineering and bioinformatics)
+occurring frequently in computer engineering and bioinformatics)
 completely polymorphically. These definitions are omitted here for brevity.
 
 The presented material on the given type class gives an overview of an elegant,
 reusable and polymorphic graph construction and transformation library. Note
 that in the available \texttt{hackage} library for algebraic graphs the
-\hs{newtype} wrappers for graph transformation are not implemented in the
-presented type class. Instead there is a higher-kinded type class which is based
+\hs{newtype} wrappers for graph transformation are not implemented as such.
+Instead there is a higher-kinded type class which is based
 on \hs{MonadPlus}, but has fewer instances~\cite{mokhov2017algebraic}.
 
 \subsection{Verification}\label{sec:verification}
@@ -479,19 +487,19 @@ This formalization\footnote{available at
 involves the definition of a \textit{locale}, which for the
 purposes of this paper can be thought of as a type class which can be equipped
 with axioms. Proving the statements from the paper in Isabelle/HOL works
-conveniently.
+without problems.
 
-Noschinski formalized graph theory in
-Isabelle/HOL~\cite{GraphTheory-AFP}. A part of that is essentially the standard
-representation of a graph as a tuple $G=(V,E)$ (i.e.\ a locale with a
-consistency axiom). Instantiating a locale (which can be likened to
+Noschinski formalized fundamental aspects of graph theory in
+Isabelle/HOL~\cite{GraphTheory-AFP}. Part of that is essentially the standard
+representation of a graph as a tuple $G=(V,E)$ (i.e.\ a locale with one single
+axiom ensuring consistency). Instantiating a locale in Isabelle/HOL (which can be likened to
 instantiating a type class in Haskell) requires to prove the axioms attached to
 it. Using the definitions from~\autoref{sec:core} for the primitives it is
 straightforward to instantiate the algebraic graph locale for the tuple
 representation. We also formally prove that the graph construction primitives only
 produce consistent graphs. A proof for the completeness of the primitives is
-given as well (as long as we accept that the tuple representation is a
-\textit{complete} graph representation).
+given as well (in the sense that every graph represented by a tuple can be
+expressed as an algebraic graph).
 
 As the statements in the original paper were of very limited scope, we 
 define and reason about more \textit{advanced} graph theoretic concepts: We
@@ -499,7 +507,7 @@ introduce (vertex) walks and the notion of reachability on algebraic graphs.
 First impressions suggest that it is feasible to base more sophisticated
 formalizations of graph theory on algebraic graphs. Although we suspect that
 some additional axiom(s) may be required to make for \textit{interesting} graph
-theory; as it stands the statement $\eps \neq \hs{vertex u}$ for a $u \in
+theory; as it stands the statement $\eps \neq \hs{vertex u}$ for some $u \in
 \mathbb{V}$ is unprovable. This is further illustrated by the fact that we can
 instantiate the algebraic graph locale with the unit type.
 
@@ -508,7 +516,7 @@ type class is interesting in Haskell: The type class forms the basis for
 a polymorphic graph transformation library, whereas the locale can be
 seen as a \textit{polymorphic} graph formalization library. Any lemma we can prove
 using the locale axioms becomes available to any graph representation
-instantiating it. This obviously becomes more interesting the more material is
+instantiating the locale. This obviously becomes more interesting the more material is
 available in the locale. Haslbeck et al.\ chose a similar approach to implement
 and verify Kruskal's algorithm independent of the concrete graph
 representation~\cite{Kruskal-AFP}.
@@ -516,7 +524,7 @@ representation~\cite{Kruskal-AFP}.
 \section{Deep Embedding}\label{sec:deep}
 Up until this point we were mainly concerned with exploiting the algebraic
 structure of graphs for polymorphic graph constructions and transformations, and
-for formal verification. However, that the deep embedding of the
+for formal verification. However, the deep embedding of the
 construction primitives in a datatype is interesting in itself. Recall the
 definition from the introduction:
 \begin{minted}{haskell}
@@ -540,64 +548,70 @@ obtain a law-abiding \hs{Eq} instance:
     x == y = fold x == (fold y :: Relation a)
 \end{minted}
 This approach is also currently implemented in the library available on
-\texttt{hackage}. However, this is not ideal for multiple reasons. Coupling the
-datatype to some other graph representation merely for equality checks is
-inconvenient at best. More interestingly algebraic graphs can compactly
-represent dense graphs. Consider the graph \hs{clique [1..n]}, which is linear
-in size in the deep embedding, while it is quadratic when stored as a
-\hs{Relation}. Requiring to fully expand graphs to check equality voids this
-advantage. A promising approach to alleviate this issue is the \textit{modular
-  graph decomposition}~\cite{mcconnell2005linear}, as it allows to minimize
-algebraic graph expressions. It remains an open question if this decomposition
-can be computed efficiently directly on the deep embedding.
+\texttt{hackage} (although an adjacency map is used instead of a relation).
+However, this is not ideal for multiple reasons. Coupling the datatype to some
+other graph representation merely for equality checks is inconvenient at best.
+More interestingly algebraic graphs can compactly represent dense graphs.
+Consider the graph \hs{clique [1..n]}, which has a linear size representation in
+the deep embedding, while it is quadratic when stored as a \hs{Relation}.
+Requiring to fully expand graphs to check equality voids this advantage. A
+promising approach to alleviate this issue is \textit{modular graph
+  decomposition}~\cite{mcconnell2005linear}, as it allows to minimize algebraic
+graph expressions. It remains an open question if this decomposition can be
+computed efficiently directly on the deep embedding.
 
 More interesting questions for future work come up in connection with the deep
 embedding. Currently only the transformations presented with the type class, i.e.\
 transpose, as well as anything that can be done using the corresponding versions
 of \hs{gmap} and \hs{bind}, are implemented directly on the deep embedding. No
-known efficient implementations of fundamental graph algorithms, like
-depth-first-search, that work directly on the deep embedding are
-known~\cite{mokhov2017algebraic}. The library therefore resorts to converting
-algebraic graph expressions to an adjacency map and uses algorithms
-for those.
+known efficient implementations of fundamental graph algorithms - like
+depth-first-search - that work directly on the deep embedding are
+known~\cite{mokhov2017algebraic}. The current library implementation therefore
+resorts to converting algebraic graph expressions to an adjacency map and reuses
+existing algorithms on this representation.
 
-An immediate application which can be more efficient in space using
-algebraic graphs that comes to mind is search, however, only in best case
+An immediate application which can be more efficient in space while also being
+competitive regarding time complexity using
+algebraic graphs that comes to mind is search. However, this only applies in best case
 examples, i.e.\ where only a small part of the graph has to be expanded. This is
 due to the fact that the neighborhood of a vertex in an algebraic graph
 expression can be computed in linear (in the size of the graph expression) time
 and space. We already saw that the algebraic graph representation can be
 significantly smaller than conventional representations.
 
-Some benchmarks were performed (on an earlier version of the library) to compare
+Benchmarks (on an earlier version of the library) were performed by Moine to compare
 its performance to \texttt{containers} and \texttt{fgl} (and one other
 representation). The results are mixed; depending on the area of application,
-algebraic graphs may be competitive in performance, or in some cases, orders of
-magnitudes slower. For the full results refer to the benchmark suite
-repository\footnote{available at
+algebraic graphs offer a competitive alternative, while in other cases, they
+perform orders of magnitudes worse. For the full results refer to the repository
+containing the benchmark suite\footnote{available at
   \texttt{\href{https://github.com/haskell-perf/graphs}{https://github.com/haskell-perf/graphs}}}.
+
 \subsection{Verification}\label{sec:quotient}
 We were also interested in using the deep embedding in formal verification using
-Isabelle/HOL. Hence, we formalized most of the material from the library. This
-feat turned out nicely, as the inductive datatype definition of the deep
-embedding enables proofs by induction.
+Isabelle/HOL. Hence, we once more formalized large parts of the material on the
+deep embedding from the Haskell library. This
+feat turned out to be very convenient, as the inductive datatype definition of the deep
+embedding enables proofs by induction. Many of the resulting subgoals were then handled
+automatically by Isabelle.
 
 In the Haskell implementation of the deep embedding we already saw that
 structural equality does not satisfy the axioms. There we can define a custom
 \hs{Eq} instance to obtain a law-abiding datatype. In Isabelle/HOL we can follow
 a similar approach, which results in a \texttt{quotient\_type}, which can be
 thought of as an equivalence class construction on the raw datatype. For the
-moment the equivalence is based on the tuple representation by Noschinski
-mentioned in~\autoref{sec:verification}. Again, the minimization of algebraic
-graph expressions for an equivalence relation on algebraic graphs, decoupled
-from any other graph representation, is desirable.
+moment the equivalence is based on conversion of algebraic graph expressions to
+the tuple representation by Noschinski mentioned in~\autoref{sec:verification}.
+Again, the minimization of algebraic graph expressions to obtain an equivalence
+relation on algebraic graphs, decoupled from any other graph representation, is
+very much desirable.
 
 The quotient type also allows us to formally prove that it satisfies the axioms,
-by instantiating the locale. It also paves the way for further formalization
-efforts on the deep embedding. However, this only becomes really interesting
-with more future work, i.e.\ if algorithms that work directly on the deep
-embedding or other advanced usages of it can be found (in other words, if there
-is more material to formalize).
+by instantiating the locale corresponding to the core type class. It also paves
+the way for further formalization efforts on the deep embedding. However, this
+also requires more work to become truly interesting, i.e.\ if algorithms that
+work directly on the deep embedding or other advanced usages of it can be found
+(or put rather bluntly, if there is more material to formalize).
 
 \section{Conclusion}\label{sec:conclusion}
 We saw a novel approach to representing graphs, which is especially suitable for
@@ -614,18 +628,18 @@ during Haskell eXchange 2018\footnote{available at
 
 Algebraic graphs as presented have been successfully used in practice, e.g.\ for
 asynchronous circuit design~\cite{beaumont2017high} and acceleration of graph
-processing using FPGAs~\cite{mokhov2019language}. These are examples for which
+processing using FPGAs~\cite{mokhov2019language}. In these examples
 the available transformations are sufficient. An important direction for future
 research is going beyond those (relatively simple) transformations. That means
 to find and formulate algorithms either inside the core type class or directly
 on the deep embedding. Berghammer et. al~\cite{berghammer2020relational}
 successfully employ algebraic approaches to formally verify graph algorithms.
 However, they are using an algebra of relations as opposed to the one here
-defined using graph construction primitives. Dolan~\cite{dolan2013fun} uses an
-algebra on adjacency matrices to find paths in graphs.
+defined on graph construction primitives. Dolan~\cite{dolan2013fun} uses an
+algebra on adjacency matrices (specifically a semiring) to find paths in graphs.
 Mokhov himself postulates that the algebraic approach allows to formulate graph
-algorithms as systems of equations with unknowns. This approach may also be a
-way to find novel graph algorithms.
+algorithms as systems of equations with unknowns. This may also be an approach
+for finding novel graph algorithms.
 
 \printbibliography
 
