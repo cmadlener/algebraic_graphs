@@ -226,7 +226,8 @@ proof -
 qed
 
 lemma overlay_empty_neutral: "x \<oplus> \<epsilon> = x"
-proof -
+  by (metis overlay_assoc r_decomposition)
+(* proof -
   have "x = x \<oplus> x \<oplus> \<epsilon>"
     by (simp add: r_decomposition)
   also have "\<dots> = x \<oplus> x \<oplus> (\<epsilon> \<oplus> \<epsilon> \<oplus> \<epsilon>)"
@@ -236,7 +237,10 @@ proof -
   also have "\<dots> = x \<oplus> \<epsilon>"
     by (simp flip: r_decomposition)
   finally show ?thesis by simp
-qed
+qed *)
+
+lemma overlay_empty_neutral_left: "\<epsilon> \<oplus> x = x"
+  by (metis overlay_comm overlay_empty_neutral)
 
 lemma overlay_idempotent[simp]: "x \<oplus> x = x"
   using overlay_empty_neutral r_decomposition by auto
@@ -338,6 +342,11 @@ lemma vertices_vertex_set: "set xs \<subseteq> vertex_set (vertices xs)"
   unfolding vertex_set_def
   using vertices_has_vertex by blast
 
+lemma vertices_append: "vertices (xs @ ys) = vertices xs \<oplus> vertices ys"
+  using overlay_assoc
+  by (induction xs)
+     (auto simp: overlay_empty_neutral_left)
+
 
 lemma subgraph_mono_vertex: "h \<sqsubseteq> g \<Longrightarrow> has_vertex h u \<Longrightarrow> has_vertex g u"
   unfolding has_vertex_def
@@ -410,21 +419,21 @@ end
 
 subsection \<open>Undirected Graphs\<close>
 locale algebraic_graph = algebraic_pre_graph + 
-  assumes overlay_comm: "x \<oplus> y = y \<oplus> x"
-    and overlay_assoc: "x \<oplus> (y \<oplus> z) = (x \<oplus> y) \<oplus> z"
+  assumes overlay_comm': "x \<oplus> y = y \<oplus> x"
+    and overlay_assoc': "x \<oplus> (y \<oplus> z) = (x \<oplus> y) \<oplus> z"
     and connect_comm: "x \<rightarrow> y = y \<rightarrow> x"
     and connect_identity: "x \<rightarrow> \<epsilon> = x"
     and left_distr: "x \<rightarrow> (y \<oplus> z) = x \<rightarrow> y \<oplus> x \<rightarrow> z"
     and left_decomp: "(x \<rightarrow> y) \<rightarrow> z = x \<rightarrow> y \<oplus> x \<rightarrow> z \<oplus> y \<rightarrow> z"
 begin
 
-lemma connect_assoc: "(x \<rightarrow> y) \<rightarrow> z = x \<rightarrow> (y \<rightarrow> z)"
-  by (metis connect_comm left_decomp overlay_comm)
+lemma connect_assoc': "(x \<rightarrow> y) \<rightarrow> z = x \<rightarrow> (y \<rightarrow> z)"
+  by (metis connect_comm left_decomp overlay_comm')
 
 end
 
 sublocale algebraic_graph \<subseteq> algebraic_digraph
-  using connect_assoc connect_comm overlay_assoc overlay_comm left_decomp
+  using connect_assoc' connect_comm overlay_assoc' overlay_comm' left_decomp
   by unfold_locales
      (force simp add: connect_identity left_distr)+
 
