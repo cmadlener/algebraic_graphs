@@ -1,0 +1,5 @@
+\isacommand{inductive}\isamarkupfalse%
+\ vwalk\ \isakeyword{where}\isanewline
+\ \ vwalk{\isacharunderscore}{\kern0pt}Nil{\isacharcolon}{\kern0pt}\ {\isachardoublequoteopen}vwalk\ g\ {\isacharbrackleft}{\kern0pt}{\isacharbrackright}{\kern0pt}{\isachardoublequoteclose}\ {\isacharbar}{\kern0pt}\isanewline
+\ \ vwalk{\isacharunderscore}{\kern0pt}single{\isacharcolon}{\kern0pt}\ {\isachardoublequoteopen}has{\isacharunderscore}{\kern0pt}vertex\ g\ u\ {\isasymLongrightarrow}\ vwalk\ g\ {\isacharbrackleft}{\kern0pt}u{\isacharbrackright}{\kern0pt}{\isachardoublequoteclose}\ {\isacharbar}{\kern0pt}\isanewline
+\ \ vwalk{\isacharunderscore}{\kern0pt}Cons{\isacharcolon}{\kern0pt}\ {\isachardoublequoteopen}vwalk\ g\ {\isacharparenleft}{\kern0pt}v{\isacharhash}{\kern0pt}xs{\isacharparenright}{\kern0pt}\ {\isasymLongrightarrow}\ has{\isacharunderscore}{\kern0pt}edge\ g\ u\ v\ \isanewline{\isasymLongrightarrow}\ vwalk\ g\ {\isacharparenleft}{\kern0pt}u{\isacharhash}{\kern0pt}v{\isacharhash}{\kern0pt}xs{\isacharparenright}{\kern0pt}{\isachardoublequoteclose}\isanewline

@@ -11,18 +11,25 @@
 
 \usepackage{mathtools}
 
+\usepackage{isabelle,isabellesym}
+\newcommand*{\term}[1]{{\isaspacing\isastyle \input{#1}}}
+\newcommand*{\Term}[1]{{\isaspacing\isastyle #1}}
+\newcommand*{\mTerm}[1]{\text{\Term{#1}}}
+
+
 \renewcommand{\epsilon}{\varepsilon}
 \newcommand{\eps}{\epsilon}
 \newcommand{\connect}{\rightarrow}
 
 
 \title{Algebraic Graphs with Class}
+\subtitle{by Andrey Mokhov}
 \author{Christoph Madlener}
 \date{01.06.2021}
 
 \begin{document}
 \begin{frame}[plain]
-  \titlepage
+  \titlepage{}
 \end{frame}
 
 \section{Introduction}
@@ -41,9 +48,11 @@
         \Edge(2)(1)
         \Edge(1)(3)
       \end{tikzpicture}
+      
+      \vspace{2mm}
       $G_1$\onslide<3->${} = \Big(\big\{1,2,3\big\}, \big\{(1,2), (1,3), (2,1)\big\}\Big)$
     \end{column}
-    \begin{column}{.35\linewidth}
+    \begin{column}{.5\linewidth}
       \onslide<2->
       \[
         G = (V,E) \text{ s.t. } \alert{E \subseteq V \times V}
@@ -54,7 +63,7 @@
   \onslide<4->
   \begin{alertblock}{In Haskell?}
     \begin{minted}{haskell}
-    data G a = G { vs :: Set a, es :: Set (a,a) }
+  data G a = G { vs :: Set a, es :: Set (a,a) }
     \end{minted}
     \onslide<5->
     \hs{g1 = G [1,2,3] [(1,2), (1,3), (2,1)]} 
@@ -118,26 +127,25 @@
   \end{alertblock}
 \end{frame}
 
-\begin{frame}[fragile]
+\begin{frame}
   \frametitle{Algebraic Graphs}
-  \onslide<+->
-  \begin{itemize}
+  \begin{itemize}[<+->]
+  \item simple construction primitives (\emph{``the core''}):
+    \begin{enumerate}
+    \item \emph{empty} graph
+    \item single \emph{vertex} graphs
+    \item \emph{overlay}ing two graphs
+    \item \emph{connect}ing two graphs
+    \end{enumerate}
   \item complete and \alert{consistent} graph representation
-  \item simple construction primitives (\emph{``the core''})
+  \item algebraic structure \textrightarrow{} formal verification
+  \item compact representation for dense graphs
   \end{itemize}
-  \onslide<+->
-  \begin{alertblock}{Achieved by the datatype}
-    \begin{minted}{haskell}
-    data Graph a = Empty
-                 | Vertex a
-                 | Overlay (Graph a) (Graph a)
-                 | Connect (Graph a) (Graph a)
-    \end{minted}
-  \end{alertblock}
+  
 \end{frame}
 
 \begin{frame}
-  \frametitle{Empty ($\eps$) \& Vertex}
+  \frametitle{Empty Graph \& Vertex Graphs}
   \begin{columns}[t]
     \onslide<+->
     \begin{column}{.45\textwidth}
@@ -148,7 +156,7 @@
           \draw[draw=black,fill=mDarkTeal!30, rounded corners] (0,0) rectangle ++ (3,3);
         \end{tikzpicture}
         
-        \hs{Empty} ${} = \eps = (\emptyset, \emptyset)$
+        $\eps = (\emptyset, \emptyset)$
       \end{exampleblock}
     \end{column}
     \onslide<+->
@@ -161,7 +169,7 @@
           \Vertex[x=1.5,y=1.5]{1};
         \end{tikzpicture}
 
-        \hs{Vertex 1} ${} = (\{1\}, \emptyset)$
+        $1 = (\{1\}, \emptyset)$
       \end{exampleblock}
     \end{column}
   \end{columns}
@@ -218,7 +226,7 @@
 \end{frame}
 
 \begin{frame}
-  \frametitle{Connect ($\connect$ / $*$)}
+  \frametitle{Connect ($\connect$)}
   \begin{columns}
     \begin{column}{.25\textwidth}
       \centering
@@ -270,6 +278,490 @@
 \end{frame}
 
 \section{Graph Construction \& Transformation}
+
+
+\begin{frame}
+  \frametitle{Graph Construction}
+  \begin{itemize}[<+->]
+  \item for a graph $G = (V,E)$:
+    \[
+      \sum_{v \in V} v + \sum_{(u,v) \in E} u \connect v
+    \]
+  \item for $V = \{1\}$ and $E = \{(3,4)\}$:
+    \vspace{2mm}
+    \begin{center}
+      \begin{tikzpicture}
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0,0) rectangle ++ (3,3);
+        \Vertex[x=0.75,y=2.25]{1};
+        \Vertex[x=2.25,y=0.75]{3};
+        \Vertex[x=2.25,y=2.25]{4};
+        \tikzset{EdgeStyle/.style={->}}
+        \Edge(3)(4);
+      \end{tikzpicture}
+    \end{center}
+  \end{itemize}
+\end{frame}
+
+\section{Algebra}
+\begin{frame}
+  \frametitle{An \textsc{Algebra} of Graphs}
+  \onslide<+->
+  \begin{alertblock}{Overlay ($+$) and connect ($\connect$) form an algebra
+      abiding the following axioms}
+    \begin{itemize}
+    \item<+-> $+$ is commutative and associative
+      \begin{itemize}
+      \item $x + y = y + x$
+      \item $x + (y + z) = (x + y) + z$
+      \end{itemize}
+    \item<+-> $(\mathcal{G}, \connect, \eps)$ is a monoid
+      \begin{itemize}
+      \item $\eps \connect x = x \connect \eps = x$
+      \item $x \connect (y \connect z) = (x \connect y) \connect z$
+      \end{itemize}
+    \end{itemize}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{An \textsc{Algebra} of Graphs - Distributivity}
+  \onslide<+->
+  \begin{alertblock}{}
+    \begin{itemize}
+    \item$\connect$ distributes over $+$
+      \begin{itemize}
+      \item $x \connect (y + z) = x \connect y + x \connect z$
+      \item $(x + y) \connect z = x \connect z + y \connect z$
+      \end{itemize}
+    \end{itemize}
+  \end{alertblock}
+
+  \vspace{3mm}
+  \begin{columns}
+    \onslide<2->
+    \begin{column}{.2\textwidth}
+      \begin{tikzpicture}[scale=0.7]
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.2,0.95) rectangle ++ (1.1,1.1);
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (1.7,1.7) rectangle ++ (1.1,1.1);
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (1.7,0.2) rectangle ++ (1.1,1.1);
+        \draw[draw=black,rounded corners] (1.65,0.15) rectangle ++ (1.2,2.7);
+        \Vertex[x=0.75,y=1.5]{1};
+        \Vertex[x=2.25,y=2.25]{2};
+        \node at (2.25,1.5) {\small $+$};
+        \Vertex[x=2.25,y=0.75]{3};
+        \draw[->] (1.3,1.5) -- (1.65,1.5);
+      \end{tikzpicture}
+    \end{column}
+    \onslide<3->
+    \begin{column}{.02\textwidth}
+      {\LARGE $=$}
+    \end{column}
+    \begin{column}{.2\textwidth}
+      \begin{tikzpicture}[scale=0.7]
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0,0) rectangle ++ (3,3);
+        \Vertex[x=0.75,y=1.5]{1};
+        \Vertex[x=2.25,y=2.25]{2};
+        \Vertex[x=2.25,y=0.75]{3};
+        \tikzset{EdgeStyle/.style={->}}
+        \Edge(1)(2);
+        \Edge(1)(3);
+      \end{tikzpicture}
+    \end{column}
+    \onslide<4->
+    \begin{column}{.02\textwidth}
+      {\LARGE $=$}
+    \end{column}
+    \begin{column}{.2\textwidth}
+      \begin{tikzpicture}[scale=0.7]
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.45,0.45) rectangle ++ (1.1,1.1);
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (1.95,0.45) rectangle ++ (1.1,1.1);
+        \draw[draw=black,rounded corners] (0.4,0.4) rectangle ++ (2.7,1.2);
+        \draw[->] (1.55,1) -- (1.95,1);
+        \Vertex[x=1,y=1]{1};
+        \Vertex[x=2.5,y=1]{2};
+        
+        \node at (1.75,0){$+$};
+      \end{tikzpicture}
+      
+      \begin{tikzpicture}[scale=0.7]
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.45,0.45) rectangle ++ (1.1,1.1);
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (1.95,0.45) rectangle ++ (1.1,1.1);
+        \draw[draw=black,rounded corners] (0.4,0.4) rectangle ++ (2.7,1.2);
+        \draw[->] (1.55,1) -- (1.95,1);
+        \Vertex[x=1,y=1]{1};
+        \Vertex[x=2.5,y=1]{3};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+   \begin{columns}
+    \onslide<2->
+    \begin{column}{.2\textwidth}
+      {\footnotesize
+        \[
+          1 \connect (2+3)
+        \]
+      }
+    \end{column}
+    \begin{column}{.02\textwidth}
+    \end{column}
+    \begin{column}{.2\textwidth}
+    \end{column}
+    \begin{column}{.02\textwidth}
+    \end{column}
+    \onslide<4->
+    \begin{column}{.2\textwidth}
+      {\footnotesize
+        \[
+          1 \connect 2 + 1 \connect 3
+        \]
+      }
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{An \textsc{Algebra} of Graphs - Decomposition}
+  \onslide<+->
+  \begin{alertblock}{}
+    \begin{itemize}
+    \item $x \connect y \connect z = x \connect y + x \connect z + y \connect z$
+    \end{itemize}
+  \end{alertblock}
+
+  \vspace{3mm}
+  \onslide<2->
+  \begin{columns}
+    \begin{column}{.25\textwidth}
+      \begin{tikzpicture}[scale=0.7]
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.45,0.45) rectangle ++ (1.1,1.1);
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (1.95,0.45) rectangle ++ (1.1,1.1);
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (3.45,0.45) rectangle ++ (1.1,1.1);
+        \draw[draw=black,rounded corners] (0.4,0.4) rectangle ++ (2.7,1.2);
+        \draw[draw=black,rounded corners] (0.35, 0.35) rectangle ++ (4.3,1.3);
+        \draw[->] (1.55,1) -- (1.95,1);
+        \draw[->] (3.1,1) -- (3.45,1);
+        \Vertex[x=1,y=1]{1};
+        \Vertex[x=2.5,y=1]{2};
+        \Vertex[x=4,y=1]{3};
+      \end{tikzpicture}
+    \end{column}
+    \onslide<3->
+    \begin{column}{.02\textwidth}
+      {\LARGE $=$}
+    \end{column}
+    \begin{column}{.17\textwidth}
+      \begin{tikzpicture}[scale=0.7]
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0,0) rectangle ++ (3,3);
+        \Vertex[x=0.75,y=2.25]{1};
+        \Vertex[x=0.75,y=0.75]{2};
+        \Vertex[x=2.25,y=1.5]{3};
+        \tikzset{EdgeStyle/.style={->}}
+        \Edge(1)(2);
+        \Edge(1)(3);
+        \Edge(2)(3);
+      \end{tikzpicture}
+    \end{column}
+    \onslide<4->
+    \begin{column}{.02\textwidth}
+      {\LARGE $=$}
+    \end{column}
+    \begin{column}{.05\textwidth}
+      \begin{tikzpicture}[scale=0.7]
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.2,1.7) rectangle ++ (1.1,1.1);
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.2,0.2) rectangle ++ (1.1,1.1);
+        \draw[draw=black,rounded corners] (0.15,0.15) rectangle ++ (1.2,2.7);
+        \draw[->] (0.75,1.7) -- (0.75,1.3);
+        \Vertex[x=0.75,y=2.25]{1};
+        \Vertex[x=0.75,y=0.75]{2};
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{.02\textwidth}
+      {\LARGE $+$}
+    \end{column}
+    \begin{column}{.2\textwidth}
+      \begin{tikzpicture}[scale=0.7]
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.45,0.45) rectangle ++ (1.1,1.1);
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (1.95,0.45) rectangle ++ (1.1,1.1);
+        \draw[draw=black,rounded corners] (0.4,0.4) rectangle ++ (2.7,1.2);
+        \draw[->] (1.55,1) -- (1.95,1);
+        \Vertex[x=1,y=1]{1};
+        \Vertex[x=2.5,y=1]{3};
+      \end{tikzpicture}
+      
+      \vspace{5mm}
+      \begin{tikzpicture}[scale=0.7]
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.45,0.45) rectangle ++ (1.1,1.1);
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (1.95,0.45) rectangle ++ (1.1,1.1);
+        \draw[draw=black,rounded corners] (0.4,0.4) rectangle ++ (2.7,1.2);
+        \draw[->] (1.55,1) -- (1.95,1);
+        \Vertex[x=1,y=1]{2};
+        \Vertex[x=2.5,y=1]{3};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+
+  \begin{columns}
+    \onslide<2->
+    \begin{column}{.25\textwidth}
+      {\footnotesize
+        \[
+          1 \connect 2 \connect 3
+        \]
+      }
+    \end{column}
+    \begin{column}{.02\textwidth}
+    \end{column}
+    \begin{column}{.17\textwidth}
+    \end{column}
+    \onslide<4->
+    \begin{column}{.3\textwidth}
+      {\footnotesize
+        \[
+          1 \connect 2 + 1 \connect 3 + 2 \connect 3
+        \]
+      }
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{An \textsc{Almost} Semiring on Graphs}
+  \onslide<+->
+  \begin{alertblock}{Under these axioms $+$ and $\connect$ almost form a
+      semiring}
+    \begin{itemize}[<+->]
+    \item $(\mathcal{G}, +, \alert<6>{\eps})$ is a commutative, idempotent monoid
+    \item $(\mathcal{G}, \connect, \alert<6>{\eps})$ is a monoid
+    \item $\connect$ distributes over $+$
+    \end{itemize}    
+  \end{alertblock}
+
+  \begin{itemize}[<+->]
+  \item Missing: annihilating zero for connect ($x \connect \eps \neq \eps$)
+  \item Unusual: shared identity \alert{$\eps$} of $+$ and $\connect$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Beyond Directed Graphs}
+  \onslide<+->
+  \begin{alertblock}{Obtain other classes of graphs by modifying the set of
+      axioms:}
+    \begin{itemize}[<+->]
+    \item Undirected graphs: $\connect$ is commutative ($x
+      \connect y = y \connect x$)
+    \item Reflexive graphs: $v = v \connect v$ for any vertex $v$
+    \item Transitive graphs:
+      \[
+        y \neq \eps \Rightarrow (x \connect y) + (y \connect z) + (x \connect z) = (x
+        \connect y) + (y \connect z)
+      \]
+    \item Preorders (reflexive + transitive), equivalence relations (preorder +
+      undirected)
+    \item Hypergraphs
+    \end{itemize}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{A Type Class for Algebraic Graphs}
+  \onslide<+->
+  \begin{minted}{haskell}
+    class Graph g where
+      type V g
+      empty   :: g
+      vertex  :: V g -> g
+      overlay :: g -> g -> g
+      connect :: g -> g -> g
+  \end{minted}
+  \onslide<+->
+  \begin{minted}{haskell}
+graph :: Graph g => [V g] -> [(V g, V g)] -> g
+graph vs es = overlay (vertices vs) (edges es)
+  \end{minted}
+  \onslide<+->
+  \alert{\textrightarrow{} Graph construction \& transformation library --
+    independent of concrete graph representation}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Formal Verification}
+  \begin{alertblock}{Using Isabelle/HOL}
+    \begin{itemize}[<+->]
+    \item (type class + axioms) $\sim$ \emph{locale} in Isabelle
+      
+      \vspace{2mm}
+      \term{terms/locale_primitives}
+    \item instantiation with $G=(V,E)$ representation \textrightarrow{} formal
+      proof of completeness and consistency
+    \end{itemize}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Formal Verification}
+  \onslide<+->
+  \begin{alertblock}{Challenge: graph type \Term{'g}}
+    \begin{itemize}[<+->]
+    \item subgraph relation $x \sqsubseteq y \vcentcolon \Leftrightarrow x + y =
+      y$
+    \end{itemize}
+  \end{alertblock}
+  \onslide<+->{\term{terms/has_elem}}
+  
+\end{frame}
+
+\begin{frame}
+  \frametitle{Formal Verification - Walks}
+  \onslide<+->
+  \begin{alertblock}{Define walks inductively}
+    \vspace{2mm}
+    \term{terms/vwalk_def}
+  \end{alertblock}
+  
+  \begin{itemize}[<+->]
+  \item Appending/splitting walks, reachability
+  \item \textrightarrow{} Polymorphic graph \emph{formalization} library
+  \end{itemize}
+\end{frame}
+
+\section{Deep Embedding}
+\begin{frame}
+  \frametitle{Compact Representation for Dense Graphs}
+  \onslide<+->
+  \[
+    1 \connect 2 \connect \dots \connect n
+  \]
+  is a linear size representation of a graph with a quadratic number of edges
+  \vspace{2mm} 
+  \onslide<+->
+  \begin{columns}
+    \begin{column}{.25\textwidth}
+      \begin{tikzpicture}
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (-1.2,-1.4) rectangle ++ (2.6,2.8);
+        \Vertices{circle}{3,2,1,5,4};
+        \tikzset{EdgeStyle/.style={->}};
+        \Edge(1)(2);
+        \Edge(1)(3);
+        \Edge(1)(4);
+        \Edge(1)(5);
+        \Edge(2)(3);
+        \Edge(2)(4);
+        \Edge(2)(5);
+        \Edge(3)(4);
+        \Edge(3)(5);
+        \Edge(4)(5);
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{.45\textwidth}
+      \small{$1 \connect 2 \connect 3 \connect 4 \connect 5$}
+    \end{column}
+  \end{columns}
+  \onslide<+->
+  \begin{exampleblock}{Open question}
+    \begin{itemize}
+    \item Can we exploit this compact representation, i.e.\ find algorithms that
+      work directly on algebraic graphs expressions?
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Deep Embedding}
+  \onslide<+->
+  \begin{minted}{haskell}
+    data Graph a = Empty
+                 | Vertex a
+                 | Overlay (Graph a) (Graph a)
+                 | Connect (Graph a) (Graph a)
+  \end{minted}
+  \onslide<+->          
+  \begin{itemize}
+  \item Custom \hs{Eq} instance required! (\hs{Empty == Overlay Empty Empty})
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Deep Embedding - Graph Transformation}
+  \onslide<+->
+  \begin{alertblock}{Reuse well-known Haskell abstractions for Graph
+      transformation}
+    \begin{itemize}[<+->]
+    \item \hs{instance Functor Graph} \textrightarrow{} contracting vertices
+    \item \hs{instance Monad Graph} \textrightarrow{} splitting vertices,
+      inducing subgraphs
+    \end{itemize}
+  \end{alertblock}
+\end{frame}
+
+\section{Conclusion}
+\begin{frame}
+  \frametitle{Conclusion}
+  \begin{alertblock}{}
+    \begin{itemize}
+    \item<+-> alternative approach to graph construction/transformation
+      \begin{itemize}
+      \item small core of primitives - safe and complete
+      \item suitable for functional programming and formal verification
+      \item available on \texttt{hackage}\footnote{\href{http://hackage.haskell.org/package/algebraic-graphs}{http://hackage.haskell.org/package/algebraic-graphs}}
+    \end{itemize}
+  \item<+-> two main directions for future work
+    \begin{enumerate}
+    \item exploit compact representation/other applications of algebraic graph
+      expressions
+    \item exploit ``polymorphism'' of type class/locale
+    \end{enumerate}
+  \end{itemize}
+  \end{alertblock}
+\end{frame}
+
+\appendix
+\begin{frame}
+  \frametitle{Graph Construction - Vertices}
+  \begin{itemize}[<+->]
+  \item Graph with only vertices:
+    \[
+      \sum_{v \in V} v
+    \]
+  \item for $V = \{1,2,3,4\}$:
+    \vspace{2mm}
+    \begin{center}
+      \begin{tikzpicture}
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0,0) rectangle ++ (3,3);
+        \Vertex[x=0.75,y=2.25]{1};
+        \Vertex[x=0.75,y=0.75]{2};
+        \Vertex[x=2.25,y=0.75]{3};
+        \Vertex[x=2.25,y=2.25]{4};
+      \end{tikzpicture}
+    \end{center}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Graph Construction - Edges}
+  \begin{itemize}[<+->]
+  \item Graph from a set of edges:
+    \[
+      \sum_{(u,v) \in E} u \connect v
+    \]
+  \item for $E = \{ (1,2), (3,4) \}$:
+    \vspace{2mm}
+    \begin{center}
+      \begin{tikzpicture}
+        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0,0) rectangle ++ (3,3);
+        \Vertex[x=0.75,y=2.25]{1};
+        \Vertex[x=0.75,y=0.75]{2};
+        \Vertex[x=2.25,y=0.75]{3};
+        \Vertex[x=2.25,y=2.25]{4};
+        \tikzset{EdgeStyle/.style={->}}
+        \Edge(1)(2);
+        \Edge(3)(4);
+      \end{tikzpicture}
+    \end{center}
+  \end{itemize}
+\end{frame}
 \begin{frame}[fragile]
   \frametitle{Graph Construction}
   \onslide<+->
@@ -362,7 +854,6 @@ graph vs es = Overlay (vertices vs) (edges es)
     \end{column}
   \end{columns}
 \end{frame}
-
 \begin{frame}[fragile]
   \frametitle{Graph Transformation - Functor}
   \begin{exampleblock}{Functor}
@@ -501,7 +992,6 @@ splitVertex p vs = g >>= \u -> if p u
   \end{columns}
 \end{frame}
 
-
 \begin{frame}[fragile]
   \frametitle{Graph Transformation - MonadPlus}
   \onslide<+->
@@ -545,132 +1035,6 @@ induce = mfilter
       \end{tikzpicture}
     \end{column}
   \end{columns}
-\end{frame}
-
-\section{Algebra}
-\begin{frame}
-  \frametitle{\textsc{Algebraic} Graphs}
-  \onslide<+->
-  \begin{alertblock}{Overlay ($+$) and connect ($\connect$) almost form a semiring over graphs}
-    \begin{itemize}[<+->]
-    \item $(\mathcal{G}, +, \alert<5>{\eps})$ is an idempotent, commutative monoid
-    \item $(\mathcal{G}, \connect, \alert<5>{\eps})$ is a monoid
-    \item $\connect$ distributes over $+$ 
-    \end{itemize}
-  \end{alertblock}
-
-  \begin{itemize}[<+->]
-  \item ``shared'' identity \alert{$\eps$}
-  \item no ``zero'' for $\connect$ (i.e.\ $g \connect 0 = 0$)
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Decomposition}
-  \onslide<+->
-  Additional axiom for algebra of graphs
-  \[
-    x \connect y \connect z = x \connect y + x \connect z + y \connect z
-  \]
-  \onslide<+->
-  \begin{columns}
-    \begin{column}{.25\textwidth}
-      \begin{tikzpicture}[scale=0.7]
-        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.45,0.45) rectangle ++ (1.1,1.1);
-        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (1.95,0.45) rectangle ++ (1.1,1.1);
-        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (3.45,0.45) rectangle ++ (1.1,1.1);
-        \draw[draw=black,rounded corners] (0.4,0.4) rectangle ++ (2.7,1.2);
-        \draw[draw=black,rounded corners] (0.35, 0.35) rectangle ++ (4.3,1.3);
-        \draw[->] (1.55,1) -- (1.95,1);
-        \draw[->] (3.1,1) -- (3.45,1);
-        \Vertex[x=1,y=1]{1};
-        \Vertex[x=2.5,y=1]{2};
-        \Vertex[x=4,y=1]{3};
-      \end{tikzpicture}
-    \end{column}
-    \onslide<+->
-    \begin{column}{.02\textwidth}
-      {\LARGE $=$}
-    \end{column}
-    \begin{column}{.17\textwidth}
-      \begin{tikzpicture}[scale=0.7]
-        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0,0) rectangle ++ (3,3);
-        \Vertex[x=0.75,y=2.25]{1};
-        \Vertex[x=0.75,y=0.75]{2};
-        \Vertex[x=2.25,y=1.5]{3};
-        \tikzset{EdgeStyle/.style={->}}
-        \Edge(1)(2);
-        \Edge(1)(3);
-        \Edge(2)(3);
-      \end{tikzpicture}
-    \end{column}
-    \onslide<+->
-    \begin{column}{.02\textwidth}
-      {\LARGE $=$}
-    \end{column}
-    \begin{column}{.05\textwidth}
-      \begin{tikzpicture}[scale=0.7]
-        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.2,1.7) rectangle ++ (1.1,1.1);
-        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.2,0.2) rectangle ++ (1.1,1.1);
-        \draw[draw=black,rounded corners] (0.15,0.15) rectangle ++ (1.2,2.7);
-        \draw[->] (0.75,1.7) -- (0.75,1.3);
-        \Vertex[x=0.75,y=2.25]{1};
-        \Vertex[x=0.75,y=0.75]{2};
-      \end{tikzpicture}
-    \end{column}
-    \begin{column}{.02\textwidth}
-      {\LARGE $+$}
-    \end{column}
-    \begin{column}{.2\textwidth}
-      \begin{tikzpicture}[scale=0.7]
-        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.45,0.45) rectangle ++ (1.1,1.1);
-        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (1.95,0.45) rectangle ++ (1.1,1.1);
-        \draw[draw=black,rounded corners] (0.4,0.4) rectangle ++ (2.7,1.2);
-        \draw[->] (1.55,1) -- (1.95,1);
-        \Vertex[x=1,y=1]{1};
-        \Vertex[x=2.5,y=1]{3};
-      \end{tikzpicture}
-      
-      \vspace{5mm}
-      \begin{tikzpicture}[scale=0.7]
-        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (0.45,0.45) rectangle ++ (1.1,1.1);
-        \draw[draw=black,fill=mDarkTeal!30,rounded corners] (1.95,0.45) rectangle ++ (1.1,1.1);
-        \draw[draw=black,rounded corners] (0.4,0.4) rectangle ++ (2.7,1.2);
-        \draw[->] (1.55,1) -- (1.95,1);
-        \Vertex[x=1,y=1]{1};
-        \Vertex[x=2.5,y=1]{3};
-      \end{tikzpicture}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Subgraph Relation}
-  Define subgraphs in terms of $(+)$ and equality:
-  \[
-    x \sqsubseteq y \iff x + y = y
-  \]
-\end{frame}
-
-\begin{frame}
-  \frametitle{Beyond Directed Graphs}
-  \onslide<+->
-  \begin{alertblock}{Obtain other classes of graphs by modifying the set of
-      axioms:}
-    \begin{itemize}[<+->]
-    \item Undirected graphs: $\leftrightarrow$ is commutative ($x
-      \leftrightarrow y = y \leftrightarrow x$)
-    \item Reflexive graphs: $x = x \connect x$
-    \item Transitive graphs:
-      \[
-        y \neq \eps \Rightarrow (x \connect y) + (y \connect z) + (x \connect z) = (x
-        \connect y) + (y \connect z)
-      \]
-    \item Preorders (reflexive + transitive), equivalence relations (preorder +
-      undirected)
-    \item Hypergraphs
-    \end{itemize}
-  \end{alertblock}
 \end{frame}
 
 \begin{frame}
@@ -725,66 +1089,4 @@ clique = foldr Connect Empty . map Vertex
   \end{exampleblock}
 \end{frame}
 
-\section{Class/Locale}
-\begin{frame}[fragile]
-  \frametitle{Algebraic Graphs with \textsc{Class}}
-  \onslide<+->
-  \begin{minted}{haskell}
-class Graph g where
-  type Vertex g
-  empty :: g
-  vertex :: Vertex g -> g
-  overlay :: g -> g -> g
-  connect :: g -> g -> g
-  \end{minted}
-  \onslide<+->
-  \alert{\textrightarrow Polymorphic graph construction/transformation library}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Formal Verification}
-  \begin{itemize}[<+->]
-  \item define \texttt{locale} in Isabelle/HOL (think Haskell class + axioms)
-  \item equational reasoning for simple statements
-    \[
-      \hs{vertices xs} \sqsubseteq \hs{clique xs}
-    \]
-  \item formal proof of completeness and consistency
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Formal Verification}
-  \begin{itemize}[<+->]
-  \item formalized material on vertex walks, reachability
-  \item probably additional axioms required ($\eps \neq \hs{vertex u}$)
-  \end{itemize}
-  \onslide<+->
-  \begin{exampleblock}{Future work}
-    \begin{itemize}
-    \item more graph theory (e.g.\ strongly connected components)
-    \item algorithms
-    \end{itemize}
-    \onslide<+->
-    \textrightarrow{} \alert{\emph{Verified}} polymorphic graph library
-  \end{exampleblock}
-\end{frame}
-
-\section{Conclusion}
-\begin{frame}
-  \frametitle{Conclusion}
-  \begin{alertblock}{}
-  \begin{itemize}
-  \item<+-> alternative approach to graph construction/transformation
-    \begin{itemize}
-    \item small core of primitives - safe and complete
-    \end{itemize}
-  \item<+-> two main directions for future work
-    \begin{enumerate}
-    \item exploit compact representation/other applications of data type
-    \item exploit polymorphism of type class/locale
-    \end{enumerate}
-  \end{itemize}
-  \end{alertblock}
-\end{frame}
 \end{document}
