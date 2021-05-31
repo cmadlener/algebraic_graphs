@@ -76,14 +76,14 @@ graph is a tuple $G = (V,E)$, where $V$ is a set of vertices and $E \subseteq V
 mathematical definition it is not necessarily suitable for implementation. This
 can be illustrated by trying to directly translate this to Haskell:
 \begin{minted}{haskell}
-  data G a = G { vertices :: Set a, edges :: Set (a,a)}
+data G a = G { vertices :: Set a, edges :: Set (a,a)}
 \end{minted}
 The value \hs{G [1,2,3] [(1,2),(2,3)]} then represents the graph $G =
 (\{1,2,3\}, \{(1,2),(2,3)\})$, however \hs{G [1,2] [(2,3)]} does not
 represent a consistent graph, as the edge refers to a non-existent node.
 The state-of-the-art \texttt{containers} library implements graphs with
 adjacency lists employing immutable arrays~\cite{king1995dfs}. The
-consistency condition $E \subseteq V \times V$ is not checked statically though,
+\emph{consistency condition} $E \subseteq V \times V$ is not checked statically,
 which can lead to runtime errors. \texttt{fgl}, another popular Haskell graph
 library uses inductive graphs~\cite{erwig2001inductive}, also exhibiting partial
 functions and potential for runtime errors due to the violation of consistency.
@@ -106,7 +106,7 @@ edges from all vertices from one graph to all vertices of the other.
 Alongside proper definitions for these primitives we will see
 in~\autoref{sec:locale} that this is indeed a sound and complete graph
 representation. We will also cover the algebraic structure (\ref{sec:algebra})
-exhibited by these graphs and elegant graph transformations (\ref{sec:trafo})
+exhibited by these primitives and elegant graph transformations (\ref{sec:trafo})
 based on a type class for the core. In~\autoref{sec:verification} we explore how
 we can exploit the algebraic structure in verification using Isabelle/HOL.
 
@@ -137,7 +137,7 @@ graphs $\mathcal{G}$ over a fixed universe of vertices $\mathbb{V}$. A graph $G
 
 The construction primitives
 then are defined as follows. The \textit{empty} graph, denoted by $\eps$, is
-simply the tuple $(\emptyset, \emptyset)$ which is clearly consistent, hence
+the tuple $(\emptyset, \emptyset)$ which is clearly consistent, hence
 $\eps \in \mathcal{G}$. Graphs with a single \textit{vertex} $v \in
 \mathbb{V}$ and no edges, i.e.\ $(\{v\}, \emptyset)$, denoted by just $v$, are also
 trivially consistent, hence $v \in \mathcal{G}$. The binary operations
@@ -147,13 +147,13 @@ respectively, allow constructing larger graphs. Their definitions are
   (V_1, E_1) \overlay (V_2, E_2) &\coloneqq (V_1 \cup V_2, E_1 \cup E_2)\\
   (V_1, E_1) \connect (V_2, E_2) &\coloneqq (V_1 \cup V_2, E_1 \cup E_2 \cup V_1 \times V_2)
 \end{align*}
-So overlay is just the union of two graphs, while connect also adds an edge from
+Overlay is just the union of two graphs, while connect also adds an edge from
 each vertex of its first argument to each vertex of its second argument. It is
 straightforward to see that if $G_1 \in \mathcal{G}$ and $G_2 \in \mathcal{G}$
 are consistent, then so are $G_1 \overlay G_2 \in \mathcal{G}$ and $G_1 \connect
 G_2 \in \mathcal{G}$. In combination with the consistency of $\eps$ and of single vertex
 graphs this already proves that algebraic graphs are a consistent
-representation for graphs, i.e.\ using the construction primitives only yields
+representation for graphs, i.e.\ the construction primitives only yield
 consistent graphs. The completeness of this representation, i.e.\ for
 each $G \in \mathcal{G}$ there is an algebraic graph expression representing it,
 is shown shortly (\ref{sec:algebra}). Both of these facts were also formally proven in
@@ -200,12 +200,12 @@ and they are illustrated in~\autoref{fig:construction}.
 We model the graph construction primitives in Haskell with the following type
 class:
 \begin{minted}{haskell}
-  class Graph g where
-      type Vertex g
-      empty :: g
-      vertex :: Vertex g -> g
-      overlay :: g -> g -> g
-      connect :: g -> g -> g
+class Graph g where
+    type Vertex g
+    empty :: g
+    vertex :: Vertex g -> g
+    overlay :: g -> g -> g
+    connect :: g -> g -> g
 \end{minted}
 The associated type \hs{Vertex g} represents the universe of vertices
 $\mathbb{V}$, the remainder of the type class corresponds to $\eps$, single
@@ -216,21 +216,21 @@ graphs. More advanced constructions and transformations will be given
 in~\autoref{sec:trafo}. A graph with a single edge is obtained by simply
 connecting two vertices:
 \begin{minted}{haskell}
-  edge :: Graph g => Vertex g -> Vertex g -> g
-  edge u v = (vertex u) `connect` (vertex v)
+edge :: Graph g => Vertex g -> Vertex g -> g
+edge u v = (vertex u) `connect` (vertex v)
 \end{minted}
 A graph with only isolated vertices can be constructed from a list of vertices
 as follows:
 \begin{minted}{haskell}
-  vertices :: Graph g => [Vertex g] -> g
-  vertices = foldr overlay empty . map vertex
+vertices :: Graph g => [Vertex g] -> g
+vertices = foldr overlay empty . map vertex
 \end{minted}
 Replacing \hs{overlay} with \hs{connect} in \hs{vertices} leads to a (directed)
 clique. Later we will also consider undirected graphs. In that context this
 function actually builds a fully connected graph on the given list of vertices.
 \begin{minted}{haskell}
-  clique :: Graph g => [Vertex g] -> g
-  clique = foldr connect empty . map vertex
+clique :: Graph g => [Vertex g] -> g
+clique = foldr connect empty . map vertex
 \end{minted}
 Following and extending this approach leads to a safe and fully polymorphic
 graph transformation library for any concrete graph representation (e.g.\ graphs
@@ -238,17 +238,13 @@ in \texttt{containers} or \texttt{fgl}) instantiating this class.
 
 \subsection{Algebraic Structure}\label{sec:algebra}
 Before turning to more advanced graph constructions we will observe the
-algebraic structure of the primitives. It turns out that overlay and connect
-almost form a semiring over graphs:
+algebraic structure of the primitives. Overlay and connect form an algebra
+abiding the following axioms:
 \begin{itemize}
-\item $(\mathcal{G}, \overlay, \eps)$ is an idempotent, commutative monoid
+\item $\oplus$ is commutative and associative
 \item $(\mathcal{G}, \connect, \eps)$ is a monoid
 \item $\connect$ distributes over $\overlay$
 \end{itemize}
-For a proper semiring an annihilating zero for $\connect$ (i.e.\
-$x \connect 0 = 0 = 0 \connect x$) is missing. It is also unusual that the two operations
-share their identity $\eps$.
-
 In addition there is the following
 \textit{decomposition law}, as illustrated in~\autoref{fig:axioms}(b).
 \[
@@ -270,40 +266,52 @@ In addition there is the following
   \caption{Two axioms of the algebra of graphs. Illustrations from~\cite{mokhov2017algebraic}.\label{fig:axioms}}
 \end{figure*}
 With decomposition we can prove by equational reasoning that $\overlay$ is
-idempotent and that $\eps$ is indeed its identity.
-According to Mokhov, the remaining axioms are a minimal set of axioms
+idempotent and that $\eps$ is its identity. Thus, overlay and connect
+almost form a semiring over graphs:
+\begin{itemize}
+\item $(\mathcal{G}, \overlay, \eps)$ is an idempotent, commutative monoid
+\item $(\mathcal{G}, \connect, \eps)$ is a monoid
+\item $\connect$ distributes over $\overlay$
+\end{itemize}
+For a proper semiring the annihilating zero for $\connect$ (i.e.\
+$x \connect \eps = \eps = \eps \connect x$) is missing. It is also unusual that the two operations
+share their identity $\eps$.
+
+According to Mokhov, the stated axioms are a minimal set of axioms
 \emph{characterizing} algebraic graphs~\cite{mokhov2017algebraic}. From the
 original paper it does not become clear what he means by characterization:
 Letting $\mathcal{G} = \{1\}$, $\eps = 1$, $1 \overlay 1 = 1$ and
 $1\connect 1 = 1$ gives a structure abiding all axioms. This definition of
-$\mathcal{G}$ is clearly not (isomorphic to) what we call directed graphs for
-any universe of vertices.
+$\mathcal{G}$ corresponds to graphs with an empty universe of vertices (as there
+is only the empty graph). However, this definition is independent of the
+underlying universe of vertices. So we can define the same structure
+for a non-empty universe. In this scenario the primitives don't behave like what we
+call (isomorphic to) graphs.
 We don't know which additional axioms are required to obtain this isomorphism.
 However, the statement $\eps \neq vertex\ u$ for any $u \in \mathbb{V}$ does not
 follow from the given axioms. Hence, adding an axiom scheme $\forall u \in
-\mathbb{V}: \eps \neq vertex\ u$ seems sensible. Additionally $vertex$ probably
-needs to be injective (i.e.\ $vertex\ u = vertex\ v \implies u = v$), however, we don't know if this
-is sufficient.
+\mathbb{V}: \eps \neq vertex\ u$ seems sensible. Additionally $vertex$ 
+needs to be injective (i.e.\ $vertex\ u = vertex\ v \implies u = v$).
 
 One can, however, easily verify that the definitions of the primitives given
 in~\autoref{sec:core} satisfy these axioms. At this point let us consider the
 completeness of algebraic graphs. For any graph $G=(V,E)$ the following function
 builds it using the four construction primitives:
 \begin{minted}{haskell}
-  graph :: Graph g => [Vertex g] -> [(Vertex g, Vertex g)] -> g
-  graph vs es = overlay (vertices vs) (edges es)
+graph :: Graph g => [Vertex g] -> [(Vertex g, Vertex g)] -> g
+graph vs es = overlay (vertices vs) (edges es)
 \end{minted}
 The \hs{edges} function generalizes \hs{edge} to a list of edges:
 \begin{minted}{haskell}
-  edges :: Graph g => [(Vertex g, Vertex g)] -> g
-  edges = foldr overlay empty . map (uncurry edge)
+edges :: Graph g => [(Vertex g, Vertex g)] -> g
+edges = foldr overlay empty . map (uncurry edge)
 \end{minted}
-They are a direct translation of the fact, that any algebraic graph expression
+They are a direct translation of the fact that any algebraic graph expression
 $g$ for a graph $G=(V,E) \in \mathcal{G}$ can be rewritten in the 
 \textit{canonical form}:
 \[
   g = \left( \bigoplus_{v \in V} v \right) \oplus \left( \bigoplus_{(u,v) \in E}
-  u \connect v \right)
+    u \connect v \right)
 \]
 
 Mokhov also follows a standard approach of defining a partial order $(\preceq)$ for the
@@ -324,7 +332,7 @@ introducing this axiom we can prove some of the other axioms of directed graphs.
 Hence, according to Mokhov~\cite{mokhov2017algebraic}, undirected graphs are
 characterized by the following minimal set of axioms:
 \begin{itemize}
-\item $(\mathcal{G}, \oplus)$ is a commutative semigroup
+\item $\oplus$ is commutative and associative
 \item $\leftrightarrow$ is commutative and has $\eps$ as the identity
 \item left distributivity: $x \leftrightarrow (y \oplus z) = x \leftrightarrow
   y \oplus x \leftrightarrow z$
@@ -356,18 +364,18 @@ define a \hs{Graph} instance for that datatype, while realizing that more
 generally it can be used to represent relations on some domain (hence the renaming
 to \hs{Relation}).
 \begin{minted}{haskell}
-  data Relation a = R { domain :: Set a, relation :: Set (a, a)} deriving Eq
+data Relation a = R { domain :: Set a, relation :: Set (a, a)} deriving Eq
 
-  instance Ord a => Graph (Relation a) where
-    type Vertex (Relation a) = a
-    empty       = R Set.empty Set.empty
-    vertex  x   = R (singleton x) Set.empty
-    overlay x y = R (domain x `union` domain y) (relation x `union` relation y)
-    connect x y = R (domain x `union` domain y) (relation x `union` relation y `union`
-      fromAscList [ (a, b) | a <- elems (domain x), b <- elems (domain y) ])
+instance Ord a => Graph (Relation a) where
+  type Vertex (Relation a) = a
+  empty       = R Set.empty Set.empty
+  vertex  x   = R (singleton x) Set.empty
+  overlay x y = R (domain x `union` domain y) (relation x `union` relation y)
+  connect x y = R (domain x `union` domain y) (relation x `union` relation y `union`
+    fromAscList [ (a, b) | a <- elems (domain x), b <- elems (domain y) ])
 \end{minted}
 Mokhov also defines a \hs{Num} instance for \hs{Relation} which enables the use
-of \hs{+} and \hs{*} as shortcuts for \hs{overlay} resp.\ \hs{connect}.
+of \hs{+} and \hs{*} as shortcuts for \hs{overlay} and \hs{connect}.
 
 The given \hs{Graph} instance for \hs{Relation} satisfies the axioms of directed
 graphs, as was argued in~\autoref{sec:core}. Obtaining \hs{Graph} instances
@@ -376,10 +384,10 @@ also straightforward: One can simply wrap \hs{Relation} in a \hs{newtype} and
 define a custom \hs{Eq} instance. An example for undirected graphs (in this case
 the connection to symmetric directed graphs is very prominent) is given.
 \begin{minted}{haskell}
-  newtype Symmetric a = S (Relation a) deriving (Graph, Num)
+newtype Symmetric a = S (Relation a) deriving (Graph, Num)
 
-  instance Ord a => Eq (Symmetric a) where
-    S x == S y = symmetricClosure x == symmetricClosure y
+instance Ord a => Eq (Symmetric a) where
+  S x == S y = symmetricClosure x == symmetricClosure y
 \end{minted}
 It is also sensible to introduce subclasses like \hs{class Graph g => UndirectedGraph g}
 to reflect the class of graph we are working with in the type system, and thus,
@@ -390,14 +398,14 @@ constructions and transformations made possible with the core type class. Simple
 examples include constructing a \textit{path} from a list of vertices, which
 then can be easily extended to a \textit{circuit}:
 \begin{minted}{haskell}
-  path :: Graph g => [Vertex g] -> g
-  path []  = empty
-  path [x] = vertex x
-  path xs = edges $ zip xs (tail xs)
+path :: Graph g => [Vertex g] -> g
+path []  = empty
+path [x] = vertex x
+path xs = edges $ zip xs (tail xs)
 
-  circuit :: Graph g => [Vertex g] -> g
-  circuit [] = empty
-  circuit xs = path (xs ++ [head xs])
+circuit :: Graph g => [Vertex g] -> g
+circuit [] = empty
+circuit xs = path (xs ++ [head xs])
 \end{minted}
 Mokhov also gives functions for constructing \textit{star} graphs (i.e.\ a
 center vertex connected to a set of leaves) and for building graphs from
@@ -407,43 +415,43 @@ More interesting applications include the implementation of a zero time
 graph transposition using yet another \hs{newtype}
 wrapper~\cite{mokhov2017algebraic}:
 \begin{minted}{haskell}
-  newtype Transpose g = T { transpose :: g } deriving Eq
+newtype Transpose g = T { transpose :: g } deriving Eq
 
-  instance Graph g => Graph (Transpose g) where
-    type Vertex (Transpose g) = Vertex g
-    empty       = T empty
-    vertex      = T . vertex
-    overlay x y = T $ overlay (transpose x) (transpose y)
-    connect x y = T $ connect (transpose y) (transpose x)
+instance Graph g => Graph (Transpose g) where
+  type Vertex (Transpose g) = Vertex g
+  empty       = T empty
+  vertex      = T . vertex
+  overlay x y = T $ overlay (transpose x) (transpose y)
+  connect x y = T $ connect (transpose y) (transpose x)
 \end{minted}
-Although for certain representations it is possible to get an $\mathcal{O}(1)$
-transpose operation (e.g.\ by setting a transposed flag), for many typical
-representations the whole graph has to be traversed, resulting in
-$\mathcal{O}(\abs{V} + \abs{E})$ time.
+$\mathcal{O}(1)$ transposition can be achieved by representations which allow to
+use a flag to treat edges as transposed. For many typical representations (e.g.\
+adjacency lists) the whole graph has to be traversed during transposition,
+resulting in an $\mathcal{O}(\abs{V} + \abs{E})$ time operation.
 
 More sophisticated transformations can be implemented using the following
 \hs{Functor}-like \hs{newtype} wrapper. The function \hs{gmap} takes a function
-\hs{a -> b} and a graph with vertices of type \hs{a} and produces a graph with
+of type \texttt{a -> b} and a graph with vertices of type \hs{a} and produces a graph with
 vertices of type \hs{b}.
 \begin{minted}{haskell}
-  newtype GraphFunctor a = F { gfor :: forall g. Graph g => (a -> Vertex g) -> g }
+newtype GraphFunctor a = F { gfor :: forall g. Graph g => (a -> Vertex g) -> g }
 
-  instance Graph (GraphFunctor a) where
-    type Vertex (GraphFunctor a) = a
-    empty       = F $ \_ -> empty
-    vertex  x   = F $ \f -> vertex (f x)
-    overlay x y = F $ \f -> overlay (gmap f x) (gmap f y)
-    connect x y = F $ \f -> connect (gmap f x) (gmap f y)
+instance Graph (GraphFunctor a) where
+  type Vertex (GraphFunctor a) = a
+  empty       = F $ \_ -> empty
+  vertex  x   = F $ \f -> vertex (f x)
+  overlay x y = F $ \f -> overlay (gmap f x) (gmap f y)
+  connect x y = F $ \f -> connect (gmap f x) (gmap f y)
 
-  gmap :: Graph g => (a -> Vertex g) -> GraphFunctor a -> g
-  gmap = flip gfor  
+gmap :: Graph g => (a -> Vertex g) -> GraphFunctor a -> g
+gmap = flip gfor  
 \end{minted}
-Interestingly this can be used to merge vertices fulfilling some predicate
+Interestingly this can be used to contract vertices fulfilling some predicate
 \hs{p} by mapping them to a single vertex:
 \begin{minted}{haskell}
-  mergeVertices :: Graph g => (Vertex g -> Bool)
-    -> Vertex g -> GraphFunctor (Vertex g) -> g
-  mergeVertices p v = gmap $ \u -> if p u then v else u
+mergeVertices :: Graph g => (Vertex g -> Bool)
+  -> Vertex g -> GraphFunctor (Vertex g) -> g
+mergeVertices p v = gmap $ \u -> if p u then v else u
 \end{minted}
 In the original paper \hs{gmap} is then used further to construct rather
 sophisticated graphs fully polymorphically~\cite{mokhov2017algebraic}, i.e.\
@@ -453,27 +461,27 @@ Mokhov also goes on to introduce a \hs{Monad}-like \hs{newtype} wrapper. The
 \hs{bind} function in the context of graphs allows to replace each vertex with a
 (possibly empty) subgraph. This can be used to both remove and split vertices.
 \begin{minted}{haskell}
-  newtype GraphMonad a = M { bind :: forall g. Graph g => (a -> g) -> g }
+newtype GraphMonad a = M { bind :: forall g. Graph g => (a -> g) -> g }
 
-  instance Graph (GraphMonad a) where
-    type Vertex (GraphMonad a) = a
-    empty       = M $ \_ -> empty
-    vertex x    = M $ \f -> f x
-    overlay x y = M $ \f -> overlay (bind x f) (bind y f)
-    connect x y = M $ \f -> connect (bind x f) (bind y f)
+instance Graph (GraphMonad a) where
+  type Vertex (GraphMonad a) = a
+  empty       = M $ \_ -> empty
+  vertex x    = M $ \f -> f x
+  overlay x y = M $ \f -> overlay (bind x f) (bind y f)
+  connect x y = M $ \f -> connect (bind x f) (bind y f)
 \end{minted}
 Removing a vertex with \hs{bind} can be generalized to a function \hs{induce},
 which only keeps vertices satisfying some predicate \hs{p}.
 \begin{minted}{haskell}
-  induce :: Graph g => (Vertex g -> Bool) -> GraphMonad (Vertex g) -> g
-  induce p g = bind g $ \v -> if p v then vertex v else empty
+induce :: Graph g => (Vertex g -> Bool) -> GraphMonad (Vertex g) -> g
+induce p g = bind g $ \v -> if p v then vertex v else empty
 \end{minted}
 Splitting a vertex works by replacing that vertex with a graph containing the
 desired vertices.
 \begin{minted}{haskell}
-  splitVertex :: (Graph g, Eq (Vertex g)) => Vertex g -> [Vertex g] 
-    -> GraphMonad (Vertex g) -> g
-  splitVertex v vs g = bind g $ \u -> if u == v then vertices vs else vertex u
+splitVertex :: (Graph g, Eq (Vertex g)) => Vertex g -> [Vertex g] 
+  -> GraphMonad (Vertex g) -> g
+splitVertex v vs g = bind g $ \u -> if u == v then vertices vs else vertex u
 \end{minted}
 Mokhov then defines yet another \hs{newtype} wrapper utilizing \hs{bind} to
 remove edges. He also showcases the construction capabilities of the presented
@@ -502,8 +510,8 @@ To experiment further we first formalized the material from the paper in
 Isabelle/HOL~\cite{isabelle}.
 This formalization\footnote{available at
   \texttt{\href{https://github.com/cmadlener/algebraic_graphs}{https://github.com/cmadlener/algebraic\_graphs}}}
-the definition of several \textit{locale}s. For the purposes of this paper a
-locale be thought of as a type class which can be equipped with axioms. The
+includes several \textit{locale}s. For the purposes of this paper a
+locale can be thought of as a type class which can be equipped with axioms. The
 following locale is the basis for our formalization.
 
 \vspace{3mm}
@@ -530,13 +538,17 @@ As the statements in the original paper were of very limited scope, we
 define and reason about more \textit{advanced} graph theoretic concepts: We
 introduce (vertex) walks and the notion of reachability on algebraic graphs. A
 challenge posed by the approach is that a graph is simply a value of some
-abstract type \Term{'g}. Thus, we characterize the existence of a vertex or an
-edge in a given graph by the subgraph relation (denoted by $\sqsubseteq$ in the
-formalization):
+type \Term{'g}. Thus, we characterize the existence of a vertex or an
+edge in a given graph by the subgraph relation.
+A graph $g$ contains a vertex $u$ if and only if $u \subseteq g$ and an edge
+$(u,v)$ if and only if $u \connect v \subseteq g$. The Isabelle definitions for
+this look as follows:
 
 \vspace{3mm}
 \term{terms/has_elem}
 \vspace{3mm}\newline
+Where $\sqsubseteq$ is used instead of $\subseteq$ and \Term{edge u v} is
+defined as \Term{connect (vertex u) (vertex v)}.
 Equipped with these definitions we can then go on to inductively define when a
 list of vertices is a walk in a given graph:
 
@@ -547,8 +559,9 @@ We define the empty list as well as the list containing only a single vertex of
 the graph as walks (\Term{vwalk\_Nil} and \Term{vwalk\_single}). Additionally if
 a list with head \Term{v} (note that Haskell's \hs{(:)} is denoted by \Term{(\#)} in
 Isabelle) is a walk and $(u,v) \in E$, then prepending \Term{u} also yields a
-walk. Now we can prove various statements about walks (e.g.\ appending walks,
-splitting walks, etc.). Interestingly, many of these statements follow directly
+walk. Now we can prove various statements about walks (e.g.\ under which
+conditions walks can be appended, how walks can be split, etc.). Interestingly,
+many of these statements follow directly
 from the inductive definition of walks, i.e.\ we don't require any of the
 algebraic graph axioms to prove them. We only need them when a proof relies on
 the fact that $(u,v) \in E$ implies $u \in V$ as well as $v \in V$ (in other
@@ -561,16 +574,15 @@ graph as follows:
 \term{terms/edge_set_def}
 \vspace{3mm}\newline
 Reachability then can be defined via the reflexive, transitive closure of the
-edge set. The second approach is to say that $v$ is reachable from $u$ if and
+edge set, while also considering every vertex can reach itself. The second approach is to say that $v$ is reachable from $u$ if and
 only if there is a walk from $u$ to $v$. These are, however, only proof of
 concepts as only transitivity of reachability has been shown for both definitions.
 
 Nonetheless, first impressions from these experiments suggest that it is
 feasible to base more sophisticated formalizations of graph theory on algebraic
 graphs. We did not experiment with adding additional axioms as described
-in~\autoref{sec:algebra}. We instantiate the locale with the unit type, where
-all primitives simply map to the unit value. This formalizes that the current
-set of axioms is insufficient.
+in~\autoref{sec:algebra}. We do give an instantiation of the locale with the
+unit type, illustrating that the current axioms are not sufficient.
 
 Exploring verification using the locale further is an interesting direction for
 future work. The Haskell type class forms the basis for a polymorphic graph
@@ -585,14 +597,14 @@ the concrete graph representation~\cite{Kruskal-AFP}.
 \section{Deep Embedding}\label{sec:deep}
 Up until this point we were mainly concerned with exploiting the algebraic
 structure of graphs for polymorphic graph constructions and transformations, and
-for formal verification. However, the deep embedding of the
-construction primitives in a datatype is interesting in itself. Recall the
-definition from the introduction:
+for formal verification. Deeply embedding the construction primitives in a
+datatype is interesting in itself. The definition of the datatype is
+straightforward:
 \begin{minted}{haskell}
-  data Graph a = Empty
-               | Vertex a
-               | Overlay (Graph a) (Graph a)
-               | Connect (Graph a) (Graph a)
+data Graph a = Empty
+             | Vertex a
+             | Overlay (Graph a) (Graph a)
+             | Connect (Graph a) (Graph a)
 \end{minted}
 An instance for the type class can be defined easily, however, we cannot use the
 derived \hs{Eq} instance for the datatype, as it would violate the graph axioms:
@@ -601,14 +613,14 @@ equal.
 One solution is to fold the deep embedding into a concrete graph representation to
 obtain a law-abiding \hs{Eq} instance:
 \begin{minted}{haskell}
-  fold :: Graph g => Graph (Vertex g) -> g
-  fold Empty         = empty
-  fold (Vertex  x  ) = vertex x
-  fold (Overlay x y) = overlay (fold x) (fold y)
-  fold (Connect x y) = connect (fold x) (fold y)
+fold :: Graph g => Graph (Vertex g) -> g
+fold Empty         = empty
+fold (Vertex  x  ) = vertex x
+fold (Overlay x y) = overlay (fold x) (fold y)
+fold (Connect x y) = connect (fold x) (fold y)
 
-  instance Ord a => Eq (Graph a) where
-    x == y = fold x == (fold y :: Relation a)
+instance Ord a => Eq (Graph a) where
+  x == y = fold x == (fold y :: Relation a)
 \end{minted}
 This approach is also currently implemented in the library available on
 \texttt{hackage} (although an adjacency map is used instead of a relation).
@@ -670,8 +682,8 @@ very much desirable.
 The quotient type also allows us to formally prove that it satisfies the axioms,
 by instantiating the locale corresponding to the core type class. It also paves
 the way for further formalization efforts on the deep embedding. However, this
-also requires more work to become truly interesting, i.e.\ if algorithms that
-work directly on the deep embedding or other advanced usages of it can be found.
+also requires more work to become truly interesting, i.e.\ the discovery of algorithms that
+work directly on the deep embedding or other advanced usages.
 
 \section{Conclusion}\label{sec:conclusion}
 We saw a novel approach to representing graphs, which is especially suitable for
@@ -696,8 +708,8 @@ on the deep embedding. Berghammer et. al~\cite{berghammer2020relational}, as wel
 as, Guttmann and Robinson-O'Brien~\cite{Relational_Minimum_Spanning_Trees-AFP}
 successfully employ algebraic approaches to formally verify graph algorithms.
 However, they are using an algebra of relations as opposed to the one here
-defined on graph construction primitives. Dolan~\cite{dolan2013fun} uses an
-algebra on adjacency matrices (specifically a semiring) to find paths in graphs.
+defined on graph construction primitives. Dolan~\cite{dolan2013fun} uses a
+semiring on adjacency matrices to find paths in graphs.
 Mokhov himself postulates that the algebraic approach allows to formulate graph
 algorithms as systems of equations with unknowns. This may also be an approach
 for finding novel graph algorithms.
