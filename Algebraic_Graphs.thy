@@ -357,10 +357,10 @@ lemma fmap_edgeSet: "edgeSet (fmap f g) = {(f u, f v)| u v. (u,v) \<in> edgeSet 
 
 subsubsection \<open>\<^term>\<open>replaceVertex\<close>\<close>
 lemma replaceVertex_mergeVertices: "replaceVertex u v g = mergeVertices (\<lambda>w. w = u) v g"
-  by (induction g) auto
+  by (simp)
 
 lemma replaceVertex_removes: "u \<noteq> v \<Longrightarrow> u \<notin> vertexSet (replaceVertex u v g)"
-  by (induction g) auto
+  by (auto simp: fmap_vertexSet)
 
 lemma replaceVertex_id: "u \<notin> vertexSet g \<Longrightarrow> replaceVertex u v g = g"
   by (induction g) auto
@@ -370,31 +370,31 @@ lemma replaceVertex_vertexSet:
     and "u \<notin> vertexSet g \<Longrightarrow> vertexSet (replaceVertex u v g) = vertexSet g"
   by (auto simp: fmap_vertexSet)
 
-lemma replaceVertex_edge_1:
+lemma replaceVertex_edge1:
   assumes "(u,w) \<in> edgeSet g" "u \<noteq> w"
   shows "(v,w) \<in> edgeSet (replaceVertex u v g)"
   using assms
   by (induction g) (auto simp: fmap_vertexSet)
 
-lemma replaceVertex_edge_2:
+lemma replaceVertex_edge2:
   assumes "(w,u) \<in> edgeSet g" "u \<noteq> w"
   shows "(w,v) \<in> edgeSet (replaceVertex u v g)"
   using assms
   by (induction g) (auto simp: fmap_vertexSet)
 
-lemma replaceVertex_edge_3:
+lemma replaceVertex_edge3:
   assumes "(u,u) \<in> edgeSet g"
   shows "(v,v) \<in> edgeSet (replaceVertex u v g)"
   using assms
   by (induction g) (auto simp: fmap_vertexSet)
 
-lemma replaceVertex_edge_4:
+lemma replaceVertex_edge4:
   assumes "(s,t) \<in> edgeSet g" "s \<noteq> u" "t \<noteq> u"
   shows "(s,t) \<in> edgeSet (replaceVertex u v g)"
   using assms
   by (induction g) (auto simp: fmap_vertexSet)
 
-lemmas replaceVertex_edge = replaceVertex_edge_1 replaceVertex_edge_2 replaceVertex_edge_3 replaceVertex_edge_4
+lemmas replaceVertex_edge = replaceVertex_edge1 replaceVertex_edge2 replaceVertex_edge3 replaceVertex_edge4
 
 lemma replaceVertex_edgeSet:
   "edgeSet (replaceVertex u v g) = {(if s = u then v else s, if t = u then v else t)| s t. (s,t) \<in> edgeSet g}"
@@ -413,31 +413,31 @@ lemma mergeVertices_vertexSet:
   using assms
   by (induction g) (auto simp: fmap_vertexSet)
 
-lemma mergeVertices_edge_1:
+lemma mergeVertices_edge1:
   assumes "(s,t) \<in> edgeSet g" "p s" "p t"
   shows "(v,v) \<in> edgeSet (mergeVertices p v g)"
   using assms
   by (induction g) (auto simp: fmap_vertexSet)
 
-lemma mergeVertices_edge_2:
+lemma mergeVertices_edge2:
   assumes "(s,t) \<in> edgeSet g" "p s" "\<not>p t"
   shows "(v,t) \<in> edgeSet (mergeVertices p v g)"
   using assms
   by (induction g) (auto simp: fmap_vertexSet)
 
-lemma mergeVertices_edge_3:
+lemma mergeVertices_edge3:
   assumes "(s,t) \<in> edgeSet g" "\<not>p s" "p t"
   shows "(s,v) \<in> edgeSet (mergeVertices p v g)"
   using assms
   by (induction g) (auto simp: fmap_vertexSet)
 
-lemma mergeVertices_edge_4:
+lemma mergeVertices_edge4:
   assumes "(s,t) \<in> edgeSet g" "\<not>p s" "\<not>p t"
   shows "(s,t) \<in> edgeSet (mergeVertices p v g)"
   using assms
   by (induction g) (auto simp: fmap_vertexSet)
 
-lemmas merge_Vertices_edge = mergeVertices_edge_1 mergeVertices_edge_2 mergeVertices_edge_3 mergeVertices_edge_4
+lemmas merge_Vertices_edge = mergeVertices_edge1 mergeVertices_edge2 mergeVertices_edge3 mergeVertices_edge4
 
 lemma mergeVertices_edgeSet:
   "edgeSet (mergeVertices p v g) = {(if p s then v else s, if p t then v else t)| s t. (s,t) \<in> edgeSet g}"
@@ -460,31 +460,31 @@ lemma splitVertex_vertexSet:
   using assms splitVertex_vertexSet'
   by (induction g) (fastforce simp: splitVertex_id vertices_vertexSet)+
 
-lemma splitVertex_edge_1:
+lemma splitVertex_edge1:
   assumes "(u,w) \<in> edgeSet g" "u \<noteq> w"
   shows "\<And>v. v \<in> set vs \<Longrightarrow> (v,w) \<in> edgeSet (splitVertex u vs g)"
   using assms splitVertex_vertexSet'
   by (induction g) (fastforce simp: splitVertex_vertexSet)+
 
-lemma splitVertex_edge_2:
+lemma splitVertex_edge2:
   assumes "(w,u) \<in> edgeSet g" "u \<noteq> w"
   shows "\<And>v. v \<in> set vs \<Longrightarrow> (w,v) \<in> edgeSet (splitVertex u vs g)"
   using assms splitVertex_vertexSet'
   by (induction g) (fastforce simp: splitVertex_vertexSet)+
 
-lemma splitVertex_edge_3:
+lemma splitVertex_edge3:
   assumes "(u,u) \<in> edgeSet g"
   shows "\<And>v w. v \<in> set vs \<Longrightarrow> w \<in> set vs \<Longrightarrow> (v,w) \<in> edgeSet (splitVertex u vs g)"
   using assms
   by (induction g) (auto simp: splitVertex_vertexSet)
 
-lemma splitVertex_edge_4:
+lemma splitVertex_edge4:
   assumes "(s,t) \<in> edgeSet g" "s \<noteq> u" "t \<noteq> u"
   shows "(s,t) \<in> edgeSet (splitVertex u vs g)"
   using assms splitVertex_vertexSet'
   by (induction g) (fastforce simp: splitVertex_vertexSet)+
 
-lemmas splitVertex_edge = splitVertex_edge_1 splitVertex_edge_2 splitVertex_edge_3 splitVertex_edge_4
+lemmas splitVertex_edge = splitVertex_edge1 splitVertex_edge2 splitVertex_edge3 splitVertex_edge4
 
 lemma splitVertex_altdef_eq: "splitVertex' u vs g = splitVertex u vs g"
   by (induction g) auto

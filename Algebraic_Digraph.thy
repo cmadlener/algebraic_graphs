@@ -88,6 +88,11 @@ lemma algebraic_graph_eq: "algebraic_pair_digraph.graph vs es = \<lparr> pverts 
   unfolding algebraic_pair_digraph.graph.simps algebraic_vertices_eq algebraic_edges_eq
   by auto
 
+lemma pair_wf_digraph_graph: "wf_digraph (algebraic_pair_digraph.graph vs es)"
+  unfolding algebraic_graph_eq
+  by (unfold_locales)
+     simp_all
+
 lemma pair_wf_digraph_edges_subs_vertices:
   assumes "pair_wf_digraph \<lparr> pverts = vs, parcs = es \<rparr>"
   shows "fst ` es \<subseteq> vs" "snd ` es \<subseteq> vs"
@@ -102,6 +107,5 @@ lemma algebraic_pair_digraph_complete:
   using assms
   unfolding algebraic_graph_eq
   by (simp add: Un_absorb2 pair_wf_digraph_edges_subs_vertices(1) pair_wf_digraph_edges_subs_vertices(2))
-
 
 end

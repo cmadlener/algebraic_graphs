@@ -3,6 +3,10 @@ theory Algebraic_Graphs_Class
     Algebraic_Graphs
 begin
 
+no_notation Empty (\<open>\<epsilon>\<close>)
+no_notation Overlay (infixl \<open>\<oplus>\<close> 75)
+no_notation Connect (infixl \<open>\<rightarrow>\<close> 80)
+
 subsection \<open>Core\<close>
 locale algebraic_pre_graph = 
   fixes empty :: 'g ("\<epsilon>")
@@ -195,9 +199,6 @@ lemma reachable_defs_eq:
   sorry
 
 end
-no_notation Empty (\<open>\<epsilon>\<close>)
-no_notation Overlay (infixl \<open>\<oplus>\<close> 75)
-no_notation Connect (infixl \<open>\<rightarrow>\<close> 80)
 
 subsection \<open>Directed graphs\<close>
 locale algebraic_digraph = algebraic_pre_graph + 
@@ -289,7 +290,7 @@ lemma clique_append: "clique (xs @ ys) = (clique xs) \<rightarrow> (clique ys)"
 lemma subgraphI: "x \<oplus> y = y \<Longrightarrow> x \<sqsubseteq> y"
   unfolding subgraph_def by simp
 
-\<comment> \<open>TODO: partial_order from HOL-Algebra.Order ?\<close>
+\<comment> \<open>TODO: partial\_order from HOL-Algebra.Order ?\<close>
 lemma
   shows subgraph_refl: "x \<sqsubseteq> x"
     and subgraph_antisym: "x \<sqsubseteq> y \<Longrightarrow> y \<sqsubseteq> x \<Longrightarrow> x = y"
@@ -362,11 +363,17 @@ lemma overlay_no_inverse:
   using assms
   by (metis overlay_assoc overlay_empty_neutral overlay_idempotent overlay_comm)+
 
-lemma connect_no_inverse:
+lemma connect_no_inverse_aux:
   assumes "x \<rightarrow> y = \<epsilon>"
   shows "x = \<epsilon>" "y = \<epsilon>"
   using assms left_absorption right_absorption overlay_no_inverse 
   by blast+
+
+lemma connect_no_inverse:
+  assumes "x \<noteq> \<epsilon> \<or> y \<noteq> \<epsilon>"
+  shows "x \<rightarrow> y \<noteq> \<epsilon>"
+  using assms connect_no_inverse_aux
+  by blast
 
 lemma subgraph_empty_is_empty: "g \<sqsubseteq> \<epsilon> \<Longrightarrow> g = \<epsilon>"
   by (simp add: empty_least subgraph_antisym)
@@ -413,7 +420,6 @@ lemma vwalk_snoC_edge: "vwalk g (w @ [u]) \<Longrightarrow> has_edge g u v \<Lon
 
 lemma vwalk_hd: "vwalk g (u # w) \<Longrightarrow> vwalk g [u]"
   by (simp add: vwalk_has_vertex)
-
 
 end
 

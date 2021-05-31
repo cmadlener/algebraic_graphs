@@ -12,6 +12,7 @@ lift_definition AOverlay :: "'v algebraic_graph \<Rightarrow> 'v algebraic_graph
 lift_definition AConnect :: "'v algebraic_graph \<Rightarrow> 'v algebraic_graph \<Rightarrow> 'v algebraic_graph" (infixl \<open>\<rightarrow>\<close> 80) is Connect
   by (simp add: algebraic_pair_digraph.algebraic_graph_eq_def)
 
+
 interpretation algebraic_digraph_deep_embedding: algebraic_digraph AEmpty AVertex AOverlay AConnect
 proof
   show "\<And>x y. AOverlay x y = AOverlay y x"
@@ -42,7 +43,7 @@ subsubsection \<open>Helper Lemmas\<close>
 
 lemma fold_eq: "algebraic_pair_digraph.fold g = \<lparr> pverts = vertexSet g, parcs = edgeSet g \<rparr>"
   by (induction g)
-     (auto simp: pair_digraph_empty_def algebraic_pre_graph.fold.simps)
+     (auto simp: empty_pair_graph_def algebraic_pre_graph.fold.simps)
 
 lemma algebraic_graph_eq_iff: "vertexSet x = vertexSet y \<and> edgeSet x = edgeSet y \<longleftrightarrow> (x \<equiv>\<^sub>A y)"
   by (simp add: algebraic_pre_graph.algebraic_graph_eq_def fold_eq)
@@ -158,7 +159,7 @@ lemma Aconnects_append: "Aconnects (xs @ ys) = Aconnects xs \<rightarrow> Aconne
 
 lemma isEmpty_iff': "isEmpty g \<longleftrightarrow> g \<equiv>\<^sub>A \<epsilon>"
   by (induction g)
-     (auto simp: algebraic_pre_graph.algebraic_graph_eq_def algebraic_pre_graph.fold.simps pair_digraph_empty_def)
+     (auto simp: algebraic_pre_graph.algebraic_graph_eq_def algebraic_pre_graph.fold.simps empty_pair_graph_def)
 
 lemma isEmpty_iff: "AisEmpty g \<longleftrightarrow> g = \<epsilon>"
   by (metis AEmpty_def AisEmpty.abs_eq AisEmpty.rep_eq Quotient_algebraic_graph Quotient_rel_abs2 isEmpty.simps(1) isEmpty_iff')
@@ -179,5 +180,7 @@ function vertex_set :: "'a algebraic_graph \<Rightarrow> 'a set" where
 lift_definition Avertex_set :: "'a algebraic_graph \<Rightarrow> 'a set" is vertexSet
   by (auto simp flip: algebraic_graph_eq_iff)
 
+
+value "Avertex_set (AVertex (3::nat) \<rightarrow> (AVertex 4 \<oplus> \<epsilon>))"
 
 end
